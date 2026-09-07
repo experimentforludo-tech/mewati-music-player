@@ -40,6 +40,12 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
     @Volatile private var sampleRate = 44100
     private var haasBuf = FloatArray(96)
     private var haasWrite = 0
+    private var headroomLin = 1f
+    private var tbLp = 0f
+    private var splitLpL = 0f
+    private var splitLpR = 0f
+    @Volatile private var splitBassOnly = true
+    @Volatile private var lowGainLin = 1f
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(binding.binaryMessenger, "mewati.sound/dsp")
@@ -78,15 +84,24 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
 
     override fun isEnabled(): Boolean = enabled && !bypass
 
+    private val dspLock = Any()
+
     override fun reset() {
-        for (b in bands) b.reset()
-        focusBand.reset()
-        defBand.reset()
-        haasBuf.fill(0f)
-        haasWrite = 0
+        synchronized(dspLock) {
+            for (b in bands) b.reset()
+            focusBand.reset()
+            defBand.reset()
+            haasBuf.fill(0f)
+            haasWrite = 0
+            headroomLin = 1f
+            tbLp = 0f
+            splitLpL = 0f
+            splitLpR = 0f
+        }
     }
 
     private fun apply(args: Map<*, *>) {
+        synchronized(dspLock) {
         val gains = (args["gains"] as List<*>).map { (it as Number).toDouble() }
         var allFlat = true
         for (i in freqs.indices) {
@@ -100,10 +115,29 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         truBass = ((args["truBass"] as Number?)?.toDouble() ?: 0.0).coerceIn(0.0, 1.0)
         focusDb = ((args["focus"] as Number?)?.toDouble() ?: 0.0).coerceIn(-12.0, 12.0)
         defDb = ((args["definition"] as Number?)?.toDouble() ?: 0.0).coerceIn(-12.0, 12.0)
-        makeupLin = 10.0.pow(((args["makeup"] as Number?)?.toDouble() ?: 0.0) / 20.0)
         compress = args["compress"] as Boolean? ?: false
         val haas = ((args["haas"] as Number?)?.toDouble() ?: 0.0).coerceIn(0.0, 0.0022)
         haasSamples = (haas * sampleRate).toInt().coerceIn(0, haasBuf.size - 1)
+        var maxBoost = bassDb
+        for (g in lastGains) if (g > maxBoost) maxBoost = g
+        val userMakeup = ((args["makeup"] as Number?)?.toDouble() ?: 0.0)
+        val autoDb = -maxBoost.coerceAtLeast(0.0) * 0.9
+        makeupLin = 10.0.pow((userMakeup + autoDb) / 20.0)
+        var midFx = abs(focusDb) > 0.05 || abs(defDb) > 0.05 || compress ||
+            haasSamples > 0 || abs(width - 1.0) > 0.02
+        if (!midFx) {
+            for (i in 2 until lastGains.size) {
+                if (abs(lastGains[i]) > 0.05) {
+                    midFx = true
+                    break
+                }
+            }
+        }
+        splitBassOnly = !midFx
+        var lowDb = bassDb
+        if (lastGains[0] > lowDb) lowDb = lastGains[0]
+        if (lastGains[1] > lowDb) lowDb = lastGains[1]
+        lowGainLin = 10.0.pow(lowDb.coerceAtLeast(0.0) / 20.0).toFloat()
         rebuildFilters()
         bypass = allFlat &&
             bassDb < 0.05 &&
@@ -116,6 +150,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             haasSamples == 0
         enabled = true
         SoftwareEqAudioProcessor.setEngine(this)
+        }
     }
 
     private fun rebuildFilters() {
@@ -136,51 +171,133 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
 
     override fun processInterleaved(pcm: ShortArray, frames: Int, channels: Int, sr: Int) {
         if (!isEnabled()) return
-        if (sr > 0 && sr != sampleRate) {
-            sampleRate = sr
-            rebuildFilters()
-        }
-        if (frames <= 0 || channels <= 0) return
-        if (channels == 1) {
-            processMono(pcm, frames)
-        } else {
-            processStereo(pcm, frames, channels)
+        synchronized(dspLock) {
+            if (sr > 0 && sr != sampleRate) {
+                sampleRate = sr
+                rebuildFilters()
+            }
+            if (frames <= 0 || channels <= 0) return
+            if (channels > 2) return
+            if (channels == 1) {
+                if (splitBassOnly) processMonoSplit(pcm, frames) else processMono(pcm, frames)
+            } else {
+                if (splitBassOnly) processStereoSplit(pcm, frames, channels) else processStereo(pcm, frames, channels)
+            }
         }
     }
 
-    /**
-     * Soft-knee limiter. Below 0.9 the signal passes untouched; above that it
-     * eases toward the ceiling instead of being hard-cut, which is what was
-     * causing audible "fatna" (crackle) when bands/bass/makeup stacked up.
-     */
-    private fun limiter(x: Float): Float {
-        val threshold = 0.9f
-        val ax = abs(x)
-        if (ax <= threshold) return x
-        val over = ax - threshold
-        val headroom = 1f - threshold
-        val eased = threshold + tanh(over / headroom) * headroom
-        return if (x < 0f) -eased else eased
+    private fun applyHeadroom(pcm: ShortArray, frames: Int, channels: Int, dryPeak: Float, wetPeak: Float) {
+        val ceiling = minOf(0.89f, dryPeak.coerceAtLeast(1.0e-6f))
+        val need = if (wetPeak > ceiling) ceiling / wetPeak else 1f
+        headroomLin += (need - headroomLin) * 0.12f
+        val g = headroomLin
+        if (g > 0.997f && need >= 0.997f) {
+            headroomLin = 1f
+            return
+        }
+        var i = 0
+        for (n in 0 until frames) {
+            if (channels == 1) {
+                pcm[n] = (pcm[n].toFloat() * g).toInt().coerceIn(-32767, 32767).toShort()
+            } else {
+                pcm[i] = (pcm[i].toFloat() * g).toInt().coerceIn(-32767, 32767).toShort()
+                pcm[i + 1] = (pcm[i + 1].toFloat() * g).toInt().coerceIn(-32767, 32767).toShort()
+                i += channels
+            }
+        }
+    }
+
+    private fun splitAlpha(): Float =
+        (2.0 * PI * 150.0 / sampleRate).toFloat().coerceIn(0.02f, 0.35f)
+
+    private fun processMonoSplit(pcm: ShortArray, frames: Int) {
+        val tb = truBass * 0.92
+        val gLow = lowGainLin
+        val a = splitAlpha()
+        var dryPeak = 1.0e-6f
+        var wetPeak = 1.0e-6f
+        for (n in 0 until frames) {
+            val dry = pcm[n].toFloat() / 32768f
+            val ad = abs(dry)
+            if (ad > dryPeak) dryPeak = ad
+            splitLpL += a * (dry - splitLpL)
+            val low = splitLpL
+            var el = low * gLow
+            if (tb > 0.001) {
+                tbLp += a * (el - tbLp)
+                el += tanh(tbLp * 1.15f + 0.62f * tbLp * tbLp * sign(tbLp) + 0.06f * tbLp * tbLp * tbLp) * tb.toFloat()
+            }
+            val s = (dry - low) + el
+            val aw = abs(s)
+            if (aw > wetPeak) wetPeak = aw
+            pcm[n] = (s.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
+        }
+        applyHeadroom(pcm, frames, 1, dryPeak, wetPeak)
+    }
+
+    private fun processStereoSplit(pcm: ShortArray, frames: Int, channels: Int) {
+        val tb = truBass * 0.92
+        val gLow = lowGainLin
+        val a = splitAlpha()
+        var dryPeak = 1.0e-6f
+        var wetPeak = 1.0e-6f
+        var i = 0
+        for (n in 0 until frames) {
+            val dryL = pcm[i].toFloat() / 32768f
+            val dryR = pcm[i + 1].toFloat() / 32768f
+            val ad = maxOf(abs(dryL), abs(dryR))
+            if (ad > dryPeak) dryPeak = ad
+            splitLpL += a * (dryL - splitLpL)
+            splitLpR += a * (dryR - splitLpR)
+            val lowL = splitLpL
+            val lowR = splitLpR
+            var el = lowL * gLow
+            var er = lowR * gLow
+            if (tb > 0.001) {
+                val mono = (el + er) * 0.5f
+                tbLp += a * (mono - tbLp)
+                val add = tanh(tbLp * 1.15f + 0.62f * tbLp * tbLp * sign(tbLp) + 0.06f * tbLp * tbLp * tbLp) * tb.toFloat()
+                el += add
+                er += add
+            }
+            val ol = (dryL - lowL) + el
+            val orr = (dryR - lowR) + er
+            val aw = maxOf(abs(ol), abs(orr))
+            if (aw > wetPeak) wetPeak = aw
+            pcm[i] = (ol.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
+            pcm[i + 1] = (orr.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
+            i += channels
+        }
+        applyHeadroom(pcm, frames, channels, dryPeak, wetPeak)
     }
 
     private fun processMono(pcm: ShortArray, frames: Int) {
         val tb = truBass * 0.92
         val mk = makeupLin.toFloat()
         val bass = bassLin.toFloat()
+        var dryPeak = 1.0e-6f
+        var wetPeak = 1.0e-6f
         for (n in 0 until frames) {
-            var s = pcm[n].toFloat() / 32768f
+            val dry = pcm[n].toFloat() / 32768f
+            val ad = abs(dry)
+            if (ad > dryPeak) dryPeak = ad
+            var s = dry
             for (b in bands) s = b.tickL(s)
             s = focusBand.tickL(s)
             s = defBand.tickL(s)
             s *= bass
             if (tb > 0.001) {
-                s += (tanh(s * 1.15f + 0.62f * s * s * sign(s) + 0.06f * s * s * s) * tb.toFloat())
+                val a = (2.0 * PI * 150.0 / sampleRate).toFloat().coerceIn(0.02f, 0.35f)
+                tbLp += a * (s - tbLp)
+                s += (tanh(tbLp * 1.15f + 0.62f * tbLp * tbLp * sign(tbLp) + 0.06f * tbLp * tbLp * tbLp) * tb.toFloat())
             }
             s *= mk
             if (compress) s = tanh(s * 1.15f)
-            s = limiter(s)
+            val aw = abs(s)
+            if (aw > wetPeak) wetPeak = aw
             pcm[n] = (s.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
         }
+        applyHeadroom(pcm, frames, 1, dryPeak, wetPeak)
     }
 
     private fun processStereo(pcm: ShortArray, frames: Int, channels: Int) {
@@ -189,10 +306,16 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         val delay = haasSamples
         val mk = makeupLin.toFloat()
         val bass = bassLin.toFloat()
+        var dryPeak = 1.0e-6f
+        var wetPeak = 1.0e-6f
         var i = 0
         for (n in 0 until frames) {
-            var l = pcm[i].toFloat() / 32768f
-            var r = pcm[i + 1].toFloat() / 32768f
+            val dryL = pcm[i].toFloat() / 32768f
+            val dryR = pcm[i + 1].toFloat() / 32768f
+            val ad = maxOf(abs(dryL), abs(dryR))
+            if (ad > dryPeak) dryPeak = ad
+            var l = dryL
+            var r = dryR
             for (b in bands) {
                 l = b.tickL(l)
                 r = b.tickR(r)
@@ -205,7 +328,9 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             r *= bass
             if (tb > 0.001) {
                 val mono = (l + r) * 0.5f
-                val harm = tanh(mono * 1.15f + 0.62f * mono * mono * sign(mono) + 0.06f * mono * mono * mono)
+                val a = (2.0 * PI * 150.0 / sampleRate).toFloat().coerceIn(0.02f, 0.35f)
+                tbLp += a * (mono - tbLp)
+                val harm = tanh(tbLp * 1.15f + 0.62f * tbLp * tbLp * sign(tbLp) + 0.06f * tbLp * tbLp * tbLp)
                 val add = harm * tb.toFloat()
                 l += add
                 r += add
@@ -225,12 +350,13 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
                 ol = tanh(ol * 1.15f)
                 orr = tanh(orr * 1.15f)
             }
-            ol = limiter(ol)
-            orr = limiter(orr)
+            val aw = maxOf(abs(ol), abs(orr))
+            if (aw > wetPeak) wetPeak = aw
             pcm[i] = (ol.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
             pcm[i + 1] = (orr.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
             i += channels
         }
+        applyHeadroom(pcm, frames, channels, dryPeak, wetPeak)
     }
 
     private class Biquad {
@@ -260,9 +386,6 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             val w0 = 2.0 * PI * hz / sr
             val cosw = cos(w0)
             val sinw = sin(w0)
-            // Tighter Q on peaking bands stops neighbouring low-frequency bumps
-            // (32/64/125Hz) from bleeding into each other and turning into mud.
-            // Shelves keep a gentler Q so they don't overshoot/ring at the corner.
             val q = if (type == Type.PEAK) 1.4 else 0.9
             val alpha = sinw / (2.0 * q)
             val next: Coeffs = when (type) {
