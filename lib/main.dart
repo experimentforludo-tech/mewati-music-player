@@ -94,7 +94,7 @@ Future<void> _initializeApp(
         androidNotificationChannelId:
             'com.mewatitune.player.channel.audio',
         androidNotificationChannelName:
-            'Mewati Tune Player Playback',
+            'Mewati Music Player Playback',
         androidNotificationOngoing: true,
       ).timeout(
         const Duration(seconds: 8),
@@ -206,4 +206,3 @@ Future<void> _initializeApp(
     rethrow;
   }
 }
-
