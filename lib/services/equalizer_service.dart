@@ -54,7 +54,7 @@ class EqualizerService {
     _isInitialized = true;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString(_presetKey) ?? 'mewati-bass';
+      final saved = prefs.getString(_presetKey) ?? 'normal';
       await applyPreset(saved);
     } catch (e) {
       if (kDebugMode) debugPrint('EqualizerService apply saved dry: $e');
