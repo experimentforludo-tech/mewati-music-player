@@ -15,7 +15,7 @@ export 'themes/app_theme_id.dart';
 
 /// Registry of all built-in themes plus the custom-theme builder.
 class AppThemes {
-  static const AppThemeId defaultThemeId = AppThemeId.walkmanOrange;
+  static const AppThemeId defaultThemeId = AppThemeId.cyberBlack;
 
   static const AppThemeData walkmanOrange = walkmanOrangeTheme;
   static const AppThemeData cyberBlack = cyberBlackTheme;
@@ -48,4 +48,3 @@ class AppThemes {
   static AppThemeData buildCustom(Color color, double shade) =>
       buildCustomTheme(color, shade);
 }
-
