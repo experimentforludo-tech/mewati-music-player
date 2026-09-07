@@ -43,39 +43,38 @@ class EqPresets {
 
   static const list = <EqPreset>[
     EqPreset(id: 'normal', label: 'Normal', gains: [0, 0, 0, 0, 0], bass: 0),
-    // --- Megabass A/B/C experiment: clean 32/64Hz shelf only, no stereo/
-    // compression tricks, truBass held fixed at 0.45. `bass` (broadband
-    // multiplier) is 0 for all three — it was multiplying the WHOLE mixed
-    // signal (vocals included), pushing it into the limiter and causing
-    // vocal ducking on every bass hit. Boost now comes only from the
-    // frequency-selective 32/64Hz shelf, which never touches vocal range.
-    // Intensity steps 5/10/15. Pick whichever feels closest to Sony
-    // Megabass, then we lock it.
+    // --- Megabass fine-tune pass: sweet spot found between 5 and 10, now
+    // stepping 6 / 7.5 / 8.5 across Bass/Beats/Boom to pin it down further.
+    // truBass dropped to 0.40 (was 0.45) for all three. `bass` (broadband
+    // multiplier) stays 0 — that was the vocal-ducking fix (it was
+    // multiplying the whole mixed signal incl. vocals, pushing it into the
+    // limiter). Boost now comes only from the 32/64Hz shelf, which never
+    // touches vocal range.
     EqPreset(
       id: 'mewati-bass',
-      label: 'Mewati Bass™ (5)',
-      gains: [5, 4, 0, 0, 0, 0, 0, 0, 0, 0],
+      label: 'Mewati Bass™ (6)',
+      gains: [6, 4.8, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.45,
+      truBass: 0.40,
       advanced: true,
     ),
     EqPreset(
       id: 'beats',
-      label: 'Mewati Beats™ (10)',
-      gains: [10, 8, 0, 0, 0, 0, 0, 0, 0, 0],
+      label: 'Mewati Beats™ (7.5)',
+      gains: [7.5, 6, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.45,
+      truBass: 0.40,
       advanced: true,
     ),
     EqPreset(
       id: 'wow',
-      label: 'Mewati Boom™ (15)',
-      gains: [15, 12, 0, 0, 0, 0, 0, 0, 0, 0],
+      label: 'Mewati Boom™ (8.5)',
+      gains: [8.5, 6.8, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.45,
+      truBass: 0.40,
       advanced: true,
     ),
     EqPreset(id: 'vocal', label: 'Vocal ++', gains: [-2, -1, 5.5, 5, 0.5], bass: 0),
