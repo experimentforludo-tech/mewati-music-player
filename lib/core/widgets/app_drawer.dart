@@ -232,7 +232,9 @@ class AppDrawer extends StatelessWidget {
                   onTap: () {
                     themeProvider.setEqPreset(preset.id);
                     if (EqualizerService().shouldHintHeadphones(preset.id)) {
-                      ScaffoldMessenger.of(context).showSnackBar(
+                      final messenger = ScaffoldMessenger.of(context);
+                      messenger.clearSnackBars();
+                      messenger.showSnackBar(
                         const SnackBar(
                           content: Text(EqPresets.headphoneHint),
                           duration: Duration(seconds: 4),
