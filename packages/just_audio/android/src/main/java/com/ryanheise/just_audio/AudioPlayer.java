@@ -21,6 +21,7 @@ import androidx.media3.common.Player;
 import androidx.media3.common.Player.PositionInfo;
 import androidx.media3.exoplayer.ExoPlayer;
 import androidx.media3.exoplayer.DefaultRenderersFactory;
+import androidx.media3.common.audio.AudioProcessor;
 import androidx.media3.exoplayer.audio.AudioSink;
 import androidx.media3.exoplayer.audio.DefaultAudioSink;
 import androidx.media3.common.Timeline;
@@ -779,7 +780,7 @@ public class AudioPlayer implements MethodCallHandler, Player.Listener, Metadata
                     return new DefaultAudioSink.Builder(context)
                             .setEnableFloatOutput(false)
                             .setEnableAudioTrackPlaybackParams(enableAudioTrackPlaybackParams)
-                            .setAudioProcessors(new SoftwareEqAudioProcessor())
+                            .setAudioProcessors(new AudioProcessor[] { new SoftwareEqAudioProcessor() })
                             .build();
                 }
             };
