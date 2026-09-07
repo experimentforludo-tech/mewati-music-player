@@ -148,6 +148,21 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         }
     }
 
+    /**
+     * Soft-knee limiter. Below 0.9 the signal passes untouched; above that it
+     * eases toward the ceiling instead of being hard-cut, which is what was
+     * causing audible "fatna" (crackle) when bands/bass/makeup stacked up.
+     */
+    private fun limiter(x: Float): Float {
+        val threshold = 0.9f
+        val ax = abs(x)
+        if (ax <= threshold) return x
+        val over = ax - threshold
+        val headroom = 1f - threshold
+        val eased = threshold + tanh(over / headroom) * headroom
+        return if (x < 0f) -eased else eased
+    }
+
     private fun processMono(pcm: ShortArray, frames: Int) {
         val tb = truBass * 0.92
         val mk = makeupLin.toFloat()
@@ -163,6 +178,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             }
             s *= mk
             if (compress) s = tanh(s * 1.15f)
+            s = limiter(s)
             pcm[n] = (s.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
         }
     }
@@ -209,6 +225,8 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
                 ol = tanh(ol * 1.15f)
                 orr = tanh(orr * 1.15f)
             }
+            ol = limiter(ol)
+            orr = limiter(orr)
             pcm[i] = (ol.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
             pcm[i + 1] = (orr.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
             i += channels
