@@ -260,7 +260,10 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             val w0 = 2.0 * PI * hz / sr
             val cosw = cos(w0)
             val sinw = sin(w0)
-            val q = 1.0
+            // Tighter Q on peaking bands stops neighbouring low-frequency bumps
+            // (32/64/125Hz) from bleeding into each other and turning into mud.
+            // Shelves keep a gentler Q so they don't overshoot/ring at the corner.
+            val q = if (type == Type.PEAK) 1.4 else 0.9
             val alpha = sinw / (2.0 * q)
             val next: Coeffs = when (type) {
                 Type.PEAK -> {
