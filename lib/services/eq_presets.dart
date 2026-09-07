@@ -44,13 +44,18 @@ class EqPresets {
   static const list = <EqPreset>[
     EqPreset(id: 'normal', label: 'Normal', gains: [0, 0, 0, 0, 0], bass: 0),
     // --- Megabass A/B/C experiment: clean 32/64Hz shelf only, no stereo/
-    // compression tricks, truBass held fixed at 0.45. Intensity steps 5/10/15.
-    // Pick whichever preset feels closest to Sony Megabass, then we lock it.
+    // compression tricks, truBass held fixed at 0.45. `bass` (broadband
+    // multiplier) is 0 for all three — it was multiplying the WHOLE mixed
+    // signal (vocals included), pushing it into the limiter and causing
+    // vocal ducking on every bass hit. Boost now comes only from the
+    // frequency-selective 32/64Hz shelf, which never touches vocal range.
+    // Intensity steps 5/10/15. Pick whichever feels closest to Sony
+    // Megabass, then we lock it.
     EqPreset(
       id: 'mewati-bass',
       label: 'Mewati Bass™ (5)',
       gains: [5, 4, 0, 0, 0, 0, 0, 0, 0, 0],
-      bass: 2,
+      bass: 0,
       width: 1,
       truBass: 0.45,
       advanced: true,
@@ -59,7 +64,7 @@ class EqPresets {
       id: 'beats',
       label: 'Mewati Beats™ (10)',
       gains: [10, 8, 0, 0, 0, 0, 0, 0, 0, 0],
-      bass: 4,
+      bass: 0,
       width: 1,
       truBass: 0.45,
       advanced: true,
@@ -68,7 +73,7 @@ class EqPresets {
       id: 'wow',
       label: 'Mewati Boom™ (15)',
       gains: [15, 12, 0, 0, 0, 0, 0, 0, 0, 0],
-      bass: 6,
+      bass: 0,
       width: 1,
       truBass: 0.45,
       advanced: true,
