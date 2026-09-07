@@ -1,7 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 class Environment {
-  static const String appName = 'Mewati Tune Player';
+  static const String appName = 'Mewati Music Player';
   static const String version = '1.0.0';
 
   static bool get isProduction => kReleaseMode;
@@ -16,4 +16,3 @@ class Environment {
   // burn through a Sentry quota fast on even modest traffic.
   static const double sentryTracesSampleRate = 0.1;
 }
-
