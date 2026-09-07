@@ -43,38 +43,33 @@ class EqPresets {
 
   static const list = <EqPreset>[
     EqPreset(id: 'normal', label: 'Normal', gains: [0, 0, 0, 0, 0], bass: 0),
-    // --- Megabass fine-tune pass: sweet spot found between 5 and 10, now
-    // stepping 6 / 7.5 / 8.5 across Bass/Beats/Boom to pin it down further.
-    // truBass dropped to 0.40 (was 0.45) for all three. `bass` (broadband
-    // multiplier) stays 0 — that was the vocal-ducking fix (it was
-    // multiplying the whole mixed signal incl. vocals, pushing it into the
-    // limiter). Boost now comes only from the 32/64Hz shelf, which never
-    // touches vocal range.
+    // Sony-style thok on cheap IEMs: one 64Hz bump only (no 32Hz shelf),
+    // modest TruBass. 32+64 stack was the "stick in the ear".
     EqPreset(
       id: 'mewati-bass',
-      label: 'Mewati Bass™ (6)',
-      gains: [6.5, 5, 0, 0, 0, 0, 0, 0, 0, 0],
+      label: 'Mewati Bass™',
+      gains: [0, 2.5, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.35,
+      truBass: 0.28,
       advanced: true,
     ),
     EqPreset(
       id: 'beats',
-      label: 'Mewati Beats™ (7.5)',
-      gains: [6.5, 5, 0, 0, 0, 0, 0, 0, 0, 0],
+      label: 'Mewati Beats™',
+      gains: [0, 3.0, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.40,
+      truBass: 0.32,
       advanced: true,
     ),
     EqPreset(
       id: 'wow',
-      label: 'Mewati Boom™ (8.5)',
-      gains: [6.5, 5, 0, 0, 0, 0, 0, 0, 0, 0],
+      label: 'Mewati Boom™',
+      gains: [0, 3.5, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.45,
+      truBass: 0.35,
       advanced: true,
     ),
     EqPreset(id: 'vocal', label: 'Vocal ++', gains: [-2, -1, 5.5, 5, 0.5], bass: 0),
