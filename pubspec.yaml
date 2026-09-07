@@ -1,5 +1,5 @@
 name: mewati_tune_player
-description: "Mewati Tune Player - Mewati music ka ghar. A regional folk music streaming app."
+description: "Mewati Music Player - Mewati music ka ghar. A regional folk music streaming app."
 publish_to: 'none'
 version: 1.0.0+1
 
@@ -50,4 +50,3 @@ flutter:
   uses-material-design: true
   assets:
     - assets/images/
-
