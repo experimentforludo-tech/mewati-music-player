@@ -19,7 +19,7 @@ class PlayerService {
   factory PlayerService() => _instance;
 
   final AudioPlayer _player = AudioPlayer(
-    audioPipeline: const AudioPipeline(androidAudioEffects: []),
+    audioPipeline: AudioPipeline(androidAudioEffects: const []),
   );
   final DownloadsService _downloadsService = DownloadsService();
   final SongsService _songsService = SongsService();
@@ -468,4 +468,3 @@ class PlayerService {
     _player.dispose();
   }
 }
-
