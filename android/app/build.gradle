@@ -70,3 +70,8 @@ flutter {
     source = "../.."
 }
 
+dependencies {
+    def exoplayer_version = "1.4.1"
+    implementation "androidx.media3:media3-exoplayer:$exoplayer_version"
+    implementation "androidx.media3:media3-common:$exoplayer_version"
+}
