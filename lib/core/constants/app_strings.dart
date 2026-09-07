@@ -1,6 +1,6 @@
 class AppStrings {
   static const String appTagline = 'Mewati music ka ghar';
-  static const String appName = 'Mewati Song Player';
+  static const String appName = 'Mewati Music Player';
 
   static const String login = 'Login';
   static const String signup = 'Sign Up';
@@ -52,4 +52,3 @@ class AppStrings {
   static const String feedbackDrawerLabel = 'Feedback / Suggest a Song';
   static const String advanceSettingsDrawerLabel = 'Advance Settings';
 }
-
