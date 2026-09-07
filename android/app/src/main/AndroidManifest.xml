@@ -8,7 +8,7 @@
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS"/>
 
     <application
-        android:label="Mewati Song Player"
+        android:label="Mewati Music Player"
         android:name="${applicationName}"
         android:icon="@mipmap/ic_launcher"
         android:roundIcon="@mipmap/ic_launcher_round"
@@ -56,4 +56,3 @@
             android:value="2"/>
     </application>
 </manifest>
-
