@@ -10,7 +10,7 @@ const _customShadeKey = 'custom_theme_shade';
 
 class ThemeProvider extends ChangeNotifier {
   AppThemeId _themeId = AppThemes.defaultThemeId;
-  String _eqPreset = 'mewati-bass';
+  String _eqPreset = 'normal';
 
   // Persisted custom-theme color/shade — only meaningful when
   // _themeId == AppThemeId.custom, but kept around even when a preset
@@ -162,4 +162,3 @@ class ThemeProvider extends ChangeNotifier {
     await setTheme(AppThemes.defaultThemeId);
   }
 }
-
