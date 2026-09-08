@@ -19,7 +19,6 @@ const _cbRepeatOneBadge = Color(0xFF22C55E);
 
 class MiniPlayerCyberBlack extends StatelessWidget {
   final MiniPlayerData data;
-
   const MiniPlayerCyberBlack({Key? key, required this.data}) : super(key: key);
 
   @override
@@ -31,7 +30,6 @@ class MiniPlayerCyberBlack extends StatelessWidget {
     final loopMode = data.loopMode;
     final queuePosition = data.queuePosition;
     final playerProvider = data.playerProvider;
-
     final singerName = (song.singerName as String?) ?? '';
     final subtitleParts = <String>[
       if (singerName.isNotEmpty) singerName,
@@ -41,10 +39,7 @@ class MiniPlayerCyberBlack extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-        24,
-        22,
-        24,
-        16 + MediaQuery.of(context).padding.bottom * 0.4,
+        24, 22, 24, 16 + MediaQuery.of(context).padding.bottom * 0.4,
       ),
       decoration: const BoxDecoration(
         color: _cbBackground,
@@ -70,6 +65,7 @@ class MiniPlayerCyberBlack extends StatelessWidget {
                     color: _cbTextPrimary,
                     fontSize: 16,
                     fontWeight: FontWeight.w600,
+                    decoration: TextDecoration.none,
                   ),
                 ),
                 if (subtitleParts.isNotEmpty) ...[
@@ -82,6 +78,7 @@ class MiniPlayerCyberBlack extends StatelessWidget {
                     style: const TextStyle(
                       color: _cbTextSecondary,
                       fontSize: 13,
+                      decoration: TextDecoration.none,
                     ),
                   ),
                 ],
@@ -252,7 +249,6 @@ class MiniPlayerCyberBlack extends StatelessWidget {
 
 class _CyberBlackSlider extends StatefulWidget {
   final void Function(Duration position) onSeek;
-
   const _CyberBlackSlider({required this.onSeek});
 
   @override
@@ -261,13 +257,11 @@ class _CyberBlackSlider extends StatefulWidget {
 
 class _CyberBlackSliderState extends State<_CyberBlackSlider> {
   double? _dragValue;
-
   String _fmt(Duration d) => d.asCompact;
 
   void _updateDrag(double localDx, double width) {
     if (width <= 0) return;
-    final pct = (localDx / width).clamp(0.0, 1.0);
-    setState(() => _dragValue = pct);
+    setState(() => _dragValue = (localDx / width).clamp(0.0, 1.0));
   }
 
   void _commitDrag(Duration duration) {
@@ -286,7 +280,6 @@ class _CyberBlackSliderState extends State<_CyberBlackSlider> {
   @override
   Widget build(BuildContext context) {
     final playerProvider = context.read<PlayerProvider>();
-
     return ValueListenableBuilder<Duration>(
       valueListenable: playerProvider.durationNotifier,
       builder: (context, duration, _) {
@@ -298,7 +291,6 @@ class _CyberBlackSliderState extends State<_CyberBlackSlider> {
                 : (position.inMilliseconds / duration.inMilliseconds)
                     .clamp(0.0, 1.0);
             final pct = _dragValue ?? actualPct;
-
             return Column(
               mainAxisSize: MainAxisSize.min,
               crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -344,11 +336,19 @@ class _CyberBlackSliderState extends State<_CyberBlackSlider> {
                   children: [
                     Text(
                       _fmt(position),
-                      style: const TextStyle(color: _cbTextSecondary, fontSize: 12),
+                      style: const TextStyle(
+                        color: _cbTextSecondary,
+                        fontSize: 12,
+                        decoration: TextDecoration.none,
+                      ),
                     ),
                     Text(
                       _fmt(duration),
-                      style: const TextStyle(color: _cbTextSecondary, fontSize: 12),
+                      style: const TextStyle(
+                        color: _cbTextSecondary,
+                        fontSize: 12,
+                        decoration: TextDecoration.none,
+                      ),
                     ),
                   ],
                 ),
