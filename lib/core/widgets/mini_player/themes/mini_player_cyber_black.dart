@@ -15,7 +15,7 @@ const _cbAccentBlue = Color(0xFFFF6600);
 const _cbTrackBg = Color(0xFF1A1A1A);
 const _cbTrackBorder = Color(0x66FFFFFF);
 const _cbProgressFill = Color(0xFFFF6600);
-const _cbRepeatOneBadge = Color(0xFF22C55E);
+const _cbRepeatOneBadge = Color(0xFFFF6600);
 
 class MiniPlayerCyberBlack extends StatelessWidget {
   final MiniPlayerData data;
@@ -39,7 +39,7 @@ class MiniPlayerCyberBlack extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: EdgeInsets.fromLTRB(
-        24, 22, 24, 16 + MediaQuery.of(context).padding.bottom * 0.4,
+        20, 12, 20, 12 + MediaQuery.of(context).padding.bottom * 0.35,
       ),
       decoration: const BoxDecoration(
         color: _cbBackground,
@@ -137,16 +137,16 @@ class MiniPlayerCyberBlack extends StatelessWidget {
                 children: [
                   _cbCircleButton(
                     icon: Icons.skip_previous,
-                    size: 58,
+                    size: 52,
                     onTap: () => playerProvider.previous(),
                   ),
-                  const SizedBox(width: 18),
+                  const SizedBox(width: 14),
                   isLoading
                       ? const SizedBox(
-                          width: 80,
-                          height: 80,
+                          width: 64,
+                          height: 64,
                           child: Padding(
-                            padding: EdgeInsets.all(24),
+                            padding: EdgeInsets.all(18),
                             child: CircularProgressIndicator(
                               strokeWidth: 2.5,
                               valueColor:
@@ -156,14 +156,14 @@ class MiniPlayerCyberBlack extends StatelessWidget {
                         )
                       : _cbCircleButton(
                           icon: isPlaying ? Icons.pause : Icons.play_arrow,
-                          size: 80,
-                          iconSize: 34,
+                          size: 64,
+                          iconSize: 30,
                           onTap: () => playerProvider.togglePlayPause(),
                         ),
-                  const SizedBox(width: 18),
+                  const SizedBox(width: 14),
                   _cbCircleButton(
                     icon: Icons.skip_next,
-                    size: 58,
+                    size: 52,
                     onTap: () => playerProvider.next(),
                   ),
                 ],
