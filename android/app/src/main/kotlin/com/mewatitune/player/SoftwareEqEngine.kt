@@ -38,6 +38,8 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
     private var tbLp = 0f
     private var splitLpL = 0f
     private var splitLpR = 0f
+    private var rumbleLpL = 0f
+    private var rumbleLpR = 0f
     @Volatile private var splitBassOnly = true
     @Volatile private var lowGainLin = 1f
     @Volatile private var truTreble = 0.0
@@ -101,6 +103,8 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             tbLp = 0f
             splitLpL = 0f
             splitLpR = 0f
+            rumbleLpL = 0f
+            rumbleLpR = 0f
             airLpL = 0f
             airLpR = 0f
             jhanPeak.reset()
@@ -111,7 +115,6 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             jhanSlowR = 0f
         }
     }
-
     private fun apply(args: Map<*, *>) {
         synchronized(dspLock) {
         val gains = (args["gains"] as List<*>).map { (it as Number).toDouble() }
@@ -237,6 +240,9 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
     private fun splitAlpha(): Float =
         (2.0 * PI * 150.0 / sampleRate).toFloat().coerceIn(0.02f, 0.35f)
 
+    private fun rumbleAlpha(): Float =
+        (2.0 * PI * 60.0 / sampleRate).toFloat().coerceIn(0.008f, 0.18f)
+
     private fun airAlpha(): Float =
         (2.0 * PI * 4800.0 / sampleRate).toFloat().coerceIn(0.20f, 0.85f)
 
@@ -248,6 +254,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         val doBass = gLow > 1.01f || tb > 0.001
         val doTreble = gHigh > 1.01f || tt > 0.001
         val aLow = splitAlpha()
+        val aRumble = rumbleAlpha()
         val aAir = airAlpha()
         var dryPeak = 1.0e-6f
         var wetPeak = 1.0e-6f
@@ -258,13 +265,16 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             var s = dry
             if (doBass) {
                 splitLpL += aLow * (dry - splitLpL)
-                val low = splitLpL
-                var el = low * gLow
+                rumbleLpL += aRumble * (dry - rumbleLpL)
+                val body = splitLpL
+                val rumble = rumbleLpL
+                val punch = body - rumble
+                var el = rumble * 0.55f + punch * gLow
                 if (tb > 0.001) {
-                    tbLp += aLow * (el - tbLp)
+                    tbLp += aLow * (punch * gLow - tbLp)
                     el += tanh(tbLp * 1.15f + 0.62f * tbLp * tbLp * sign(tbLp) + 0.06f * tbLp * tbLp * tbLp) * tb.toFloat()
                 }
-                s = (dry - low) + el
+                s = (dry - body) + el
             }
             if (doTreble) {
                 airLpL += aAir * (s - airLpL)
@@ -288,6 +298,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         }
         applyHeadroom(pcm, frames, 1, dryPeak, wetPeak, matchDry = false)
     }
+
     private fun processStereoSplit(pcm: ShortArray, frames: Int, channels: Int) {
         val tb = truBass * 0.92
         val tt = truTreble * 0.92
@@ -296,6 +307,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         val doBass = gLow > 1.01f || tb > 0.001
         val doTreble = gHigh > 1.01f || tt > 0.001
         val aLow = splitAlpha()
+        val aRumble = rumbleAlpha()
         val aAir = airAlpha()
         var dryPeak = 1.0e-6f
         var wetPeak = 1.0e-6f
@@ -310,19 +322,23 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             if (doBass) {
                 splitLpL += aLow * (dryL - splitLpL)
                 splitLpR += aLow * (dryR - splitLpR)
-                val lowL = splitLpL
-                val lowR = splitLpR
-                var el = lowL * gLow
-                var er = lowR * gLow
+                rumbleLpL += aRumble * (dryL - rumbleLpL)
+                rumbleLpR += aRumble * (dryR - rumbleLpR)
+                val bodyL = splitLpL
+                val bodyR = splitLpR
+                val punchL = bodyL - rumbleLpL
+                val punchR = bodyR - rumbleLpR
+                var el = rumbleLpL * 0.55f + punchL * gLow
+                var er = rumbleLpR * 0.55f + punchR * gLow
                 if (tb > 0.001) {
-                    val mono = (el + er) * 0.5f
+                    val mono = (punchL + punchR) * 0.5f * gLow
                     tbLp += aLow * (mono - tbLp)
                     val add = tanh(tbLp * 1.15f + 0.62f * tbLp * tbLp * sign(tbLp) + 0.06f * tbLp * tbLp * tbLp) * tb.toFloat()
                     el += add
                     er += add
                 }
-                ol = (dryL - lowL) + el
-                orr = (dryR - lowR) + er
+                ol = (dryL - bodyL) + el
+                orr = (dryR - bodyR) + er
             }
             if (doTreble) {
                 airLpL += aAir * (ol - airLpL)
