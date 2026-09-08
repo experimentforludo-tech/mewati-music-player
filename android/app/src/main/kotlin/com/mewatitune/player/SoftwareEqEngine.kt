@@ -137,7 +137,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         if (lastGains[0] > lowDb) lowDb = lastGains[0]
         if (lastGains[1] > lowDb) lowDb = lastGains[1]
         lowGainLin = 10.0.pow(lowDb.coerceAtLeast(0.0) / 20.0).toFloat()
-        val airDb = ((args["air"] as Number?)?.toDouble() ?: 0.0).coerceIn(0.0, 12.0)
+        val airDb = ((args["air"] as Number?)?.toDouble() ?: 0.0).coerceIn(0.0, 15.0)
         truTreble = ((args["truTreble"] as Number?)?.toDouble() ?: 0.0).coerceIn(0.0, 1.0)
         highGainLin = 10.0.pow(airDb / 20.0).toFloat()
         rebuildFilters()
@@ -222,7 +222,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         (2.0 * PI * 150.0 / sampleRate).toFloat().coerceIn(0.02f, 0.35f)
 
     private fun airAlpha(): Float =
-        (2.0 * PI * 5500.0 / sampleRate).toFloat().coerceIn(0.25f, 0.85f)
+        (2.0 * PI * 2800.0 / sampleRate).toFloat().coerceIn(0.12f, 0.42f)
 
     private fun processMonoSplit(pcm: ShortArray, frames: Int) {
         val tb = truBass * 0.92
