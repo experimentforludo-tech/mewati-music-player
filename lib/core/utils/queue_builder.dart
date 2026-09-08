@@ -1,7 +1,5 @@
-// FILE: lib/core/utils/queue_builder.dart
 import '../../models/song.dart';
 
-/// Result of building a validated, windowed playback queue.
 class BuiltQueue {
   final List<Song> songs;
   final int startIndex;
@@ -9,34 +7,23 @@ class BuiltQueue {
   const BuiltQueue({required this.songs, required this.startIndex});
 }
 
-/// Pure (no I/O, no platform channels) logic for validating and windowing
-/// a playback queue.
-///
-/// Fixed (Serial 17): this was previously inlined directly inside
-/// PlayerService.setPlaylist, which made it impossible to unit test without
-/// a real AudioPlayer / SharedPreferences / file system (all of which need
-/// platform channels). Moving it here — with the same behavior, just a new
-/// location — lets it be covered by real unit tests. PlayerService still
-/// owns the async "is this song downloaded on disk" check and passes the
-/// resulting verified ids in via [locallyAvailableSongIds].
 class QueueBuilder {
-  /// Cap on how many songs are ever loaded into a single queue at once, to
-  /// avoid OOM on large libraries. Window is centered on the requested
-  /// start index. Kept in sync with PlayerService's internal window size.
   static const int maxQueueWindow = 60;
 
-  /// Filters [songs] down to ones with a playable source, remaps
-  /// [startIndex] into the filtered list, and caps the result to a window
-  /// of at most [windowSize] songs centered on the (remapped) start index.
-  ///
-  /// A song is considered playable if either:
-  ///  - its id is present in [locallyAvailableSongIds] (a verified local
-  ///    download), OR
-  ///  - its audioUrl parses to a URI with a non-empty host.
-  ///
-  /// Throws [ArgumentError] if [songs] is empty, or [StateError] if every
-  /// song is unplayable — PlayerService.setPlaylist catches both and wraps
-  /// them into its usual user-facing Exception, matching prior behavior.
+  static int remapStartIndex({
+    required List<Song> original,
+    required int originalStartIndex,
+    required List<Song> eligible,
+  }) {
+    if (eligible.isEmpty) return 0;
+    if (originalStartIndex >= 0 && originalStartIndex < original.length) {
+      final id = original[originalStartIndex].id;
+      final found = eligible.indexWhere((s) => s.id == id);
+      if (found != -1) return found;
+    }
+    return 0;
+  }
+
   static BuiltQueue build({
     required List<Song> songs,
     required int startIndex,
@@ -87,4 +74,3 @@ class QueueBuilder {
     return BuiltQueue(songs: queueSongs, startIndex: queueStartIndex);
   }
 }
-
