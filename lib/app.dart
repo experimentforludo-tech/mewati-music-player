@@ -54,7 +54,7 @@ class _MiniPlayerRouteObserver extends NavigatorObserver {
 double _miniPlayerHeightFor(AppThemeId id) {
   switch (id) {
     case AppThemeId.cyberBlack:
-      return 244.0;
+      return 214.0;
     case AppThemeId.silverChrome:
       return 128.0;
     default:
