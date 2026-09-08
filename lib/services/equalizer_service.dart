@@ -42,7 +42,7 @@ class EqualizerService {
   Timer? _volDebounce;
 
   static const _loudIds = {'mewati-bass'};
-  static const _streamBoostIds = {'beats'};
+  static const _streamBoostIds = {'mewati-bass', 'beats'};
   static const _bassScaleIds = <String>{};
 
   static double bassScaleForVolume(double vol) =>
