@@ -1,3 +1,4 @@
+/// Locked TM + 5-band custom. Keep in sync with SOUND_LOCK.json / web eq-presets.ts.
 class EqPreset {
   const EqPreset({
     required this.id,
@@ -49,23 +50,23 @@ class EqPresets {
     EqPreset(
       id: 'mewati-bass',
       label: 'Mewati Bass™',
-      gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      gains: [0, 5.0, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0,
-      air: 6.5,
-      truTreble: 0.16,
+      truBass: 0.22,
+      air: 0,
+      truTreble: 0,
       advanced: true,
     ),
     EqPreset(
       id: 'beats',
       label: 'Mewati Beats™',
-      gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
+      gains: [0, 5.5, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0,
-      air: 8.5,
-      truTreble: 0.22,
+      truBass: 0.26,
+      air: 0,
+      truTreble: 0,
       advanced: true,
     ),
     EqPreset(
@@ -75,7 +76,7 @@ class EqPresets {
       bass: 0,
       width: 1,
       truBass: 0,
-      air: 10.5,
+      air: 9.5,
       truTreble: 0.28,
       advanced: true,
     ),
