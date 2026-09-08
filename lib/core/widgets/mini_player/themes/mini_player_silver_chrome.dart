@@ -161,16 +161,16 @@ class _AppleSeek extends StatelessWidget {
               onHorizontalDragUpdate: (d) =>
                   _seek(d.localPosition.dx, context, total),
               child: SizedBox(
-                height: 18,
+                height: 28,
                 width: double.infinity,
                 child: Align(
                   alignment: Alignment.center,
                   child: Padding(
                     padding: const EdgeInsets.symmetric(horizontal: 10),
                     child: ClipRRect(
-                      borderRadius: BorderRadius.circular(2),
+                      borderRadius: BorderRadius.circular(3),
                       child: SizedBox(
-                        height: 4,
+                        height: 10,
                         child: Stack(
                           children: [
                             const ColoredBox(
