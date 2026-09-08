@@ -60,6 +60,7 @@ class MiniPlayerDefault extends StatelessWidget {
                       color: t.textPrimary,
                       fontSize: 12,
                       fontWeight: FontWeight.w800,
+                      decoration: TextDecoration.none,
                     ),
                   ),
                 ),
@@ -71,6 +72,7 @@ class MiniPlayerDefault extends StatelessWidget {
                       color: t.textSecondary,
                       fontSize: 13,
                       fontWeight: FontWeight.w400,
+                      decoration: TextDecoration.none,
                     ),
                   ),
                 ],
@@ -276,33 +278,37 @@ class _MiniPlayerSliderState extends State<_MiniPlayerSlider> {
             return Column(
               mainAxisSize: MainAxisSize.min,
               children: [
-                SizedBox(
-                  height: 36,
-                  child: SliderTheme(
-                    data: SliderTheme.of(context).copyWith(
-                      trackHeight: 3,
-                      trackShape: const RoundedRectSliderTrackShape(),
-                      thumbShape:
-                          const RoundSliderThumbShape(enabledThumbRadius: 7),
-                      overlayShape: SliderComponentShape.noOverlay,
-                      activeTrackColor: widget.activeTrackColor,
-                      inactiveTrackColor: widget.inactiveTrackColor,
-                      thumbColor: widget.thumbColor,
-                    ),
-                    child: Slider(
-                      year2023: true,
-                      padding: EdgeInsets.zero,
-                      value: pct,
-                      onChanged: (v) {
-                        setState(() => _dragValue = v);
-                      },
-                      onChangeEnd: (v) {
-                        final newPos = Duration(
-                          milliseconds: (v * duration.inMilliseconds).round(),
-                        );
-                        widget.onSeek(newPos);
-                        setState(() => _dragValue = null);
-                      },
+                GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTapDown: (d) => _seekAt(d.localPosition.dx, context, duration),
+                  onHorizontalDragUpdate: (d) =>
+                      _seekAt(d.localPosition.dx, context, duration),
+                  child: SizedBox(
+                    height: 28,
+                    width: double.infinity,
+                    child: Align(
+                      alignment: Alignment.center,
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(3),
+                        child: SizedBox(
+                          height: 8,
+                          child: Stack(
+                            children: [
+                              ColoredBox(
+                                color: widget.inactiveTrackColor,
+                                child: const SizedBox.expand(),
+                              ),
+                              FractionallySizedBox(
+                                widthFactor: pct,
+                                child: ColoredBox(
+                                  color: widget.activeTrackColor,
+                                  child: const SizedBox.expand(),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ),
                     ),
                   ),
                 ),
@@ -315,6 +321,7 @@ class _MiniPlayerSliderState extends State<_MiniPlayerSlider> {
                       style: TextStyle(
                         color: widget.secondaryTextColor,
                         fontSize: 13,
+                        decoration: TextDecoration.none,
                       ),
                     ),
                     Text(
@@ -322,6 +329,7 @@ class _MiniPlayerSliderState extends State<_MiniPlayerSlider> {
                       style: TextStyle(
                         color: widget.secondaryTextColor,
                         fontSize: 13,
+                        decoration: TextDecoration.none,
                       ),
                     ),
                   ],
@@ -332,5 +340,13 @@ class _MiniPlayerSliderState extends State<_MiniPlayerSlider> {
         );
       },
     );
+  }
+
+  void _seekAt(double dx, BuildContext context, Duration duration) {
+    final ms = duration.inMilliseconds;
+    if (ms <= 0) return;
+    final w = context.size?.width ?? 1;
+    final p = (dx / w).clamp(0.0, 1.0);
+    widget.onSeek(Duration(milliseconds: (p * ms).round()));
   }
 }
