@@ -148,6 +148,7 @@ class _HomeScreenState extends State<HomeScreen> {
           ),
         ),
         child: SafeArea(
+          bottom: t.id != AppThemeId.silverChrome,
           child: Column(
             children: [
               BrandRow(
