@@ -183,8 +183,8 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         focusBand.set(Biquad.Type.PEAK, 3200.0, focusDb, sr)
         defBand.set(Biquad.Type.HIGHSHELF, 8000.0, defDb, sr)
         val airDb = if (highGainLin <= 1.001f) 0.0 else 20.0 * log10(highGainLin.toDouble())
-        jhanPeak.set(Biquad.Type.PEAK, 7500.0, airDb * 0.35, sr)
-        jhanAir.set(Biquad.Type.PEAK, 7500.0, 0.0, sr)
+        jhanPeak.set(Biquad.Type.PEAK, 5500.0, airDb * 0.55, sr)
+        jhanAir.set(Biquad.Type.PEAK, 5500.0, 0.0, sr)
         val haas = haasSamples.toDouble() / sampleRate.coerceAtLeast(1)
         haasSamples = (haas * sampleRate).toInt().coerceIn(0, haasBuf.size - 1)
     }
@@ -238,7 +238,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         (2.0 * PI * 150.0 / sampleRate).toFloat().coerceIn(0.02f, 0.35f)
 
     private fun airAlpha(): Float =
-        (2.0 * PI * 6500.0 / sampleRate).toFloat().coerceIn(0.20f, 0.92f)
+        (2.0 * PI * 4800.0 / sampleRate).toFloat().coerceIn(0.20f, 0.85f)
 
     private fun processMonoSplit(pcm: ShortArray, frames: Int) {
         val tb = truBass * 0.92
@@ -276,9 +276,9 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
                 jhanSlowL += 0.007f * (mag - jhanSlowL)
                 val hit = (jhanEnvL - jhanSlowL).coerceAtLeast(0f)
                 val punch = (gHigh - 1f).coerceAtLeast(0f)
-                var eh = high * (1f + punch * 0.20f) + spark * punch * (0.22f + hit * 4.0f)
+                var eh = high * (1f + punch * 0.45f) + spark * punch * (0.40f + hit * 3.6f)
                 if (tt > 0.001) {
-                    eh += tanh(spark * (0.35f + hit * 1.8f)) * tt.toFloat()
+                    eh += tanh(spark * (0.45f + hit * 1.6f)) * tt.toFloat()
                 }
                 s = body + eh
             }
@@ -288,7 +288,6 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         }
         applyHeadroom(pcm, frames, 1, dryPeak, wetPeak, matchDry = false)
     }
-
     private fun processStereoSplit(pcm: ShortArray, frames: Int, channels: Int) {
         val tb = truBass * 0.92
         val tt = truTreble * 0.92
@@ -341,11 +340,11 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
                 val hitL = (jhanEnvL - jhanSlowL).coerceAtLeast(0f)
                 val hitR = (jhanEnvR - jhanSlowR).coerceAtLeast(0f)
                 val punch = (gHigh - 1f).coerceAtLeast(0f)
-                var ehL = highL * (1f + punch * 0.20f) + sparkL * punch * (0.22f + hitL * 4.0f)
-                var ehR = highR * (1f + punch * 0.20f) + sparkR * punch * (0.22f + hitR * 4.0f)
+                var ehL = highL * (1f + punch * 0.45f) + sparkL * punch * (0.40f + hitL * 3.6f)
+                var ehR = highR * (1f + punch * 0.45f) + sparkR * punch * (0.40f + hitR * 3.6f)
                 if (tt > 0.001) {
-                    ehL += tanh(sparkL * (0.35f + hitL * 1.8f)) * tt.toFloat()
-                    ehR += tanh(sparkR * (0.35f + hitR * 1.8f)) * tt.toFloat()
+                    ehL += tanh(sparkL * (0.45f + hitL * 1.6f)) * tt.toFloat()
+                    ehR += tanh(sparkR * (0.45f + hitR * 1.6f)) * tt.toFloat()
                 }
                 ol = airLpL + ehL
                 orr = airLpR + ehR
