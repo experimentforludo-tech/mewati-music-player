@@ -12,7 +12,6 @@ import '../mini_player_data.dart';
 
 class MiniPlayerSilverChrome extends StatelessWidget {
   final MiniPlayerData data;
-
   const MiniPlayerSilverChrome({Key? key, required this.data}) : super(key: key);
 
   static const _green = Color(0xFF8FDB5A);
@@ -34,106 +33,109 @@ class MiniPlayerSilverChrome extends StatelessWidget {
       color: _bar,
       child: Padding(
         padding: EdgeInsets.only(bottom: bottom),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            const SizedBox(height: 6),
-            _AppleTimes(),
-            _AppleSeek(onSeek: (d) => playerProvider.seek(d)),
-            Padding(
-              padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
-              child: Row(
-                children: [
-                  GestureDetector(
-                    onTap: () => AppRouter.navigatorKey.currentState
-                        ?.pushNamed(RouteNames.nowPlaying),
-                    child: ClipRRect(
-                      borderRadius: BorderRadius.circular(8),
-                      child: SizedBox(
-                        width: 52,
-                        height: 52,
-                        child: cover != null && cover.isNotEmpty
-                            ? CachedNetworkImage(
-                                imageUrl: cover,
-                                fit: BoxFit.cover,
-                                cacheManager: AppCacheManager.instance,
-                                memCacheWidth: 112,
-                                memCacheHeight: 112,
-                              )
-                            : const ColoredBox(
-                                color: Color(0xFF0B1610),
-                                child: Icon(Icons.music_note, color: _green),
-                              ),
-                      ),
-                    ),
-                  ),
-                  const SizedBox(width: 12),
-                  Expanded(
-                    child: GestureDetector(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minHeight: 128),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const SizedBox(height: 6),
+              _AppleTimes(),
+              _AppleSeek(onSeek: (d) => playerProvider.seek(d)),
+              Padding(
+                padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
+                child: Row(
+                  children: [
+                    GestureDetector(
                       onTap: () => AppRouter.navigatorKey.currentState
                           ?.pushNamed(RouteNames.nowPlaying),
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Text(
-                            song.title,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 17,
-                              fontWeight: FontWeight.w600,
-                              decoration: TextDecoration.none,
-                            ),
-                          ),
-                          if (singer.isNotEmpty)
+                      child: ClipRRect(
+                        borderRadius: BorderRadius.circular(8),
+                        child: SizedBox(
+                          width: 52,
+                          height: 52,
+                          child: cover != null && cover.isNotEmpty
+                              ? CachedNetworkImage(
+                                  imageUrl: cover,
+                                  fit: BoxFit.cover,
+                                  cacheManager: AppCacheManager.instance,
+                                  memCacheWidth: 112,
+                                  memCacheHeight: 112,
+                                )
+                              : const ColoredBox(
+                                  color: Color(0xFF0B1610),
+                                  child: Icon(Icons.music_note, color: _green),
+                                ),
+                        ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: GestureDetector(
+                        onTap: () => AppRouter.navigatorKey.currentState
+                            ?.pushNamed(RouteNames.nowPlaying),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          mainAxisSize: MainAxisSize.min,
+                          children: [
                             Text(
-                              singer,
+                              song.title,
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                               style: const TextStyle(
-                                color: Color(0x8CFFFFFF),
-                                fontSize: 13,
+                                color: Colors.white,
+                                fontSize: 17,
+                                fontWeight: FontWeight.w600,
                                 decoration: TextDecoration.none,
                               ),
                             ),
-                        ],
+                            if (singer.isNotEmpty)
+                              Text(
+                                singer,
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                                style: const TextStyle(
+                                  color: Color(0x8CFFFFFF),
+                                  fontSize: 13,
+                                  decoration: TextDecoration.none,
+                                ),
+                              ),
+                          ],
+                        ),
                       ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: 'Favorite',
-                    onPressed: () => favs.toggleFavorite(song),
-                    icon: Icon(
-                      isFav ? Icons.favorite : Icons.favorite_border,
-                      color: isFav ? _green : Colors.white,
+                    IconButton(
+                      tooltip: 'Favorite',
+                      onPressed: () => favs.toggleFavorite(song),
+                      icon: Icon(
+                        isFav ? Icons.favorite : Icons.favorite_border,
+                        color: isFav ? _green : Colors.white,
+                      ),
                     ),
-                  ),
-                  IconButton(
-                    tooltip: isPlaying ? 'Pause' : 'Play',
-                    onPressed: isLoading
-                        ? null
-                        : () => playerProvider.togglePlayPause(),
-                    icon: isLoading
-                        ? const SizedBox(
-                            width: 22,
-                            height: 22,
-                            child: CircularProgressIndicator(
-                              strokeWidth: 2,
+                    IconButton(
+                      tooltip: isPlaying ? 'Pause' : 'Play',
+                      onPressed: isLoading
+                          ? null
+                          : () => playerProvider.togglePlayPause(),
+                      icon: isLoading
+                          ? const SizedBox(
+                              width: 22,
+                              height: 22,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Icon(
+                              isPlaying ? Icons.pause : Icons.play_arrow,
                               color: Colors.white,
+                              size: 28,
                             ),
-                          )
-                        : Icon(
-                            isPlaying ? Icons.pause : Icons.play_arrow,
-                            color: Colors.white,
-                            size: 28,
-                          ),
-                  ),
-                ],
+                    ),
+                  ],
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
