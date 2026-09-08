@@ -17,9 +17,7 @@ import '../../core/constants/themes/app_theme_id.dart';
 
 class _KeepAlivePage extends StatefulWidget {
   final Widget child;
-
   const _KeepAlivePage({required this.child});
-
   @override
   State<_KeepAlivePage> createState() => _KeepAlivePageState();
 }
@@ -28,7 +26,6 @@ class _KeepAlivePageState extends State<_KeepAlivePage>
     with AutomaticKeepAliveClientMixin {
   @override
   bool get wantKeepAlive => true;
-
   @override
   Widget build(BuildContext context) {
     super.build(context);
@@ -38,16 +35,15 @@ class _KeepAlivePageState extends State<_KeepAlivePage>
 
 class HomeScreen extends StatefulWidget {
   const HomeScreen({Key? key}) : super(key: key);
-
   @override
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
 class _HomeScreenState extends State<HomeScreen> {
   int _currentIndex = 0;
+  int _drawerEpoch = 0;
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
   late final PageController _pageController;
-
   final Set<int> _visitedTabs = {};
 
   static final List<Widget Function()> _screenBuilders = [
@@ -136,11 +132,13 @@ class _HomeScreenState extends State<HomeScreen> {
   @override
   Widget build(BuildContext context) {
     final t = context.watch<ThemeProvider>().theme;
-
     return Scaffold(
       key: _scaffoldKey,
       backgroundColor: t.background,
-      drawer: const AppDrawer(),
+      drawer: AppDrawer(key: ValueKey(_drawerEpoch)),
+      onDrawerChanged: (open) {
+        if (!open) setState(() => _drawerEpoch++);
+      },
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
