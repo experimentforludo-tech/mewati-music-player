@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../core/constants/app_strings.dart';
 import '../../providers/auth_provider.dart';
+import '../../providers/downloads_provider.dart';
 import '../../providers/theme_provider.dart';
+import '../../services/local_cache_service.dart';
 
 class SplashScreen extends StatefulWidget {
   const SplashScreen({Key? key}) : super(key: key);
@@ -21,6 +23,24 @@ class _SplashScreenState extends State<SplashScreen> {
     _startSplashAndNavigate();
   }
 
+  Future<bool> _hasOfflineCatalog() async {
+    try {
+      final cached = await LocalCacheService().getCachedSongs();
+      if (cached != null && cached.isNotEmpty) return true;
+    } catch (_) {}
+    try {
+      final downloads =
+          Provider.of<DownloadsProvider>(context, listen: false);
+      if (downloads.downloadedSongIds.isNotEmpty) return true;
+    } catch (_) {}
+    return false;
+  }
+
+  Future<void> _goHome() async {
+    if (!mounted) return;
+    Navigator.of(context).pushReplacementNamed('/home');
+  }
+
   Future<void> _startSplashAndNavigate() async {
     final authProvider = Provider.of<AuthProvider>(context, listen: false);
 
@@ -33,6 +53,10 @@ class _SplashScreenState extends State<SplashScreen> {
       );
     } catch (e) {
       if (!mounted) return;
+      if (await _hasOfflineCatalog()) {
+        await _goHome();
+        return;
+      }
       setState(() {
         _errorText = 'Could not connect. Please check your internet.';
         _showRetry = true;
@@ -43,7 +67,12 @@ class _SplashScreenState extends State<SplashScreen> {
     if (!mounted) return;
 
     if (authProvider.isLoggedIn && authProvider.errorMessage == null) {
-      Navigator.of(context).pushReplacementNamed('/home');
+      await _goHome();
+      return;
+    }
+
+    if (await _hasOfflineCatalog()) {
+      await _goHome();
       return;
     }
 
@@ -118,7 +147,8 @@ class _SplashScreenState extends State<SplashScreen> {
               ),
               const SizedBox(height: 24),
               Text(
-                AppStrings.appName,
+                'Mewati Song Player',
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 28,
                   fontWeight: FontWeight.bold,
@@ -128,9 +158,11 @@ class _SplashScreenState extends State<SplashScreen> {
               const SizedBox(height: 8),
               Text(
                 AppStrings.appTagline,
+                textAlign: TextAlign.center,
                 style: TextStyle(
                   fontSize: 16,
                   color: t.textSecondary,
+                  height: 1.35,
                 ),
               ),
               if (!_showRetry) ...[
@@ -182,4 +214,3 @@ class _SplashScreenState extends State<SplashScreen> {
     );
   }
 }
-
