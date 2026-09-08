@@ -39,6 +39,10 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
     private var splitLpR = 0f
     @Volatile private var splitBassOnly = true
     @Volatile private var lowGainLin = 1f
+    @Volatile private var truTreble = 0.0
+    @Volatile private var highGainLin = 1f
+    private var airLpL = 0f
+    private var airLpR = 0f
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(binding.binaryMessenger, "mewati.sound/dsp")
@@ -90,6 +94,8 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             tbLp = 0f
             splitLpL = 0f
             splitLpR = 0f
+            airLpL = 0f
+            airLpR = 0f
         }
     }
 
@@ -131,10 +137,15 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         if (lastGains[0] > lowDb) lowDb = lastGains[0]
         if (lastGains[1] > lowDb) lowDb = lastGains[1]
         lowGainLin = 10.0.pow(lowDb.coerceAtLeast(0.0) / 20.0).toFloat()
+        val airDb = ((args["air"] as Number?)?.toDouble() ?: 0.0).coerceIn(0.0, 12.0)
+        truTreble = ((args["truTreble"] as Number?)?.toDouble() ?: 0.0).coerceIn(0.0, 1.0)
+        highGainLin = 10.0.pow(airDb / 20.0).toFloat()
         rebuildFilters()
         bypass = allFlat &&
             bassDb < 0.05 &&
             truBass < 0.01 &&
+            airDb < 0.05 &&
+            truTreble < 0.01 &&
             abs(width - 1.0) < 0.01 &&
             abs(focusDb) < 0.05 &&
             abs(defDb) < 0.05 &&
@@ -210,24 +221,45 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
     private fun splitAlpha(): Float =
         (2.0 * PI * 150.0 / sampleRate).toFloat().coerceIn(0.02f, 0.35f)
 
+    private fun airAlpha(): Float =
+        (2.0 * PI * 5500.0 / sampleRate).toFloat().coerceIn(0.25f, 0.85f)
+
     private fun processMonoSplit(pcm: ShortArray, frames: Int) {
         val tb = truBass * 0.92
+        val tt = truTreble * 0.92
         val gLow = lowGainLin
-        val a = splitAlpha()
+        val gHigh = highGainLin
+        val doBass = gLow > 1.01f || tb > 0.001
+        val doTreble = gHigh > 1.01f || tt > 0.001
+        val aLow = splitAlpha()
+        val aAir = airAlpha()
         var dryPeak = 1.0e-6f
         var wetPeak = 1.0e-6f
         for (n in 0 until frames) {
             val dry = pcm[n].toFloat() / 32768f
             val ad = abs(dry)
             if (ad > dryPeak) dryPeak = ad
-            splitLpL += a * (dry - splitLpL)
-            val low = splitLpL
-            var el = low * gLow
-            if (tb > 0.001) {
-                tbLp += a * (el - tbLp)
-                el += tanh(tbLp * 1.15f + 0.62f * tbLp * tbLp * sign(tbLp) + 0.06f * tbLp * tbLp * tbLp) * tb.toFloat()
+            var s = dry
+            if (doBass) {
+                splitLpL += aLow * (dry - splitLpL)
+                val low = splitLpL
+                var el = low * gLow
+                if (tb > 0.001) {
+                    tbLp += aLow * (el - tbLp)
+                    el += tanh(tbLp * 1.15f + 0.62f * tbLp * tbLp * sign(tbLp) + 0.06f * tbLp * tbLp * tbLp) * tb.toFloat()
+                }
+                s = (dry - low) + el
             }
-            val s = (dry - low) + el
+            if (doTreble) {
+                airLpL += aAir * (s - airLpL)
+                val high = s - airLpL
+                val body = airLpL
+                var eh = high * gHigh
+                if (tt > 0.001) {
+                    eh += tanh(high * 1.15f) * tt.toFloat()
+                }
+                s = body + eh
+            }
             val aw = abs(s)
             if (aw > wetPeak) wetPeak = aw
             pcm[n] = (s.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
@@ -237,8 +269,13 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
 
     private fun processStereoSplit(pcm: ShortArray, frames: Int, channels: Int) {
         val tb = truBass * 0.92
+        val tt = truTreble * 0.92
         val gLow = lowGainLin
-        val a = splitAlpha()
+        val gHigh = highGainLin
+        val doBass = gLow > 1.01f || tb > 0.001
+        val doTreble = gHigh > 1.01f || tt > 0.001
+        val aLow = splitAlpha()
+        val aAir = airAlpha()
         var dryPeak = 1.0e-6f
         var wetPeak = 1.0e-6f
         var i = 0
@@ -247,21 +284,39 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             val dryR = pcm[i + 1].toFloat() / 32768f
             val ad = maxOf(abs(dryL), abs(dryR))
             if (ad > dryPeak) dryPeak = ad
-            splitLpL += a * (dryL - splitLpL)
-            splitLpR += a * (dryR - splitLpR)
-            val lowL = splitLpL
-            val lowR = splitLpR
-            var el = lowL * gLow
-            var er = lowR * gLow
-            if (tb > 0.001) {
-                val mono = (el + er) * 0.5f
-                tbLp += a * (mono - tbLp)
-                val add = tanh(tbLp * 1.15f + 0.62f * tbLp * tbLp * sign(tbLp) + 0.06f * tbLp * tbLp * tbLp) * tb.toFloat()
-                el += add
-                er += add
+            var ol = dryL
+            var orr = dryR
+            if (doBass) {
+                splitLpL += aLow * (dryL - splitLpL)
+                splitLpR += aLow * (dryR - splitLpR)
+                val lowL = splitLpL
+                val lowR = splitLpR
+                var el = lowL * gLow
+                var er = lowR * gLow
+                if (tb > 0.001) {
+                    val mono = (el + er) * 0.5f
+                    tbLp += aLow * (mono - tbLp)
+                    val add = tanh(tbLp * 1.15f + 0.62f * tbLp * tbLp * sign(tbLp) + 0.06f * tbLp * tbLp * tbLp) * tb.toFloat()
+                    el += add
+                    er += add
+                }
+                ol = (dryL - lowL) + el
+                orr = (dryR - lowR) + er
             }
-            val ol = (dryL - lowL) + el
-            val orr = (dryR - lowR) + er
+            if (doTreble) {
+                airLpL += aAir * (ol - airLpL)
+                airLpR += aAir * (orr - airLpR)
+                val highL = ol - airLpL
+                val highR = orr - airLpR
+                var ehL = highL * gHigh
+                var ehR = highR * gHigh
+                if (tt > 0.001) {
+                    ehL += tanh(highL * 1.15f) * tt.toFloat()
+                    ehR += tanh(highR * 1.15f) * tt.toFloat()
+                }
+                ol = airLpL + ehL
+                orr = airLpR + ehR
+            }
             val aw = maxOf(abs(ol), abs(orr))
             if (aw > wetPeak) wetPeak = aw
             pcm[i] = (ol.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
