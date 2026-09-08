@@ -22,6 +22,15 @@ class SystemVolume {
     }
   }
 
+  static Future<int> maxSteps() async {
+    try {
+      final n = await _ch.invokeMethod<num>('max');
+      return (n?.toInt() ?? 15).clamp(1, 50);
+    } catch (_) {
+      return 15;
+    }
+  }
+
   static Stream<double> get changes =>
       _ev.receiveBroadcastStream().map((e) => (e as num).toDouble().clamp(0.0, 1.0));
 }
