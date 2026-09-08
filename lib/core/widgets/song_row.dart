@@ -67,7 +67,7 @@ class SongRow extends StatelessWidget {
   static double _radius(AppThemeId id) {
     switch (id) {
       case AppThemeId.cyberBlack:
-        return 4;
+        return 8;
       case AppThemeId.silverChrome:
         return 10;
       default:
@@ -103,12 +103,12 @@ class SongRow extends StatelessWidget {
     );
 
     final likeColor = isLiked
-        ? (deep ? const Color(0xFF3B82F6) : const Color(0xFFFFD700))
+        ? (deep ? t.accent : const Color(0xFFFFD700))
         : t.textPrimary.withOpacity(0.75);
     final loveColor = isFav
-        ? (deep ? const Color(0xFFFF4500) : Colors.redAccent)
+        ? (deep ? t.accent : Colors.redAccent)
         : t.textPrimary.withOpacity(0.75);
-    final dlColor = deep ? const Color(0xFF22C55E) : t.textPrimary.withOpacity(0.75);
+    final dlColor = deep ? t.accent : t.textPrimary.withOpacity(0.75);
 
     return InkWell(
       onTap: actions.onTap,
@@ -136,15 +136,17 @@ class SongRow extends StatelessWidget {
           child: Stack(
             children: [
               Container(
-                padding: apple
+                padding: (apple || deep)
                     ? const EdgeInsets.fromLTRB(0, 0, 8, 0)
                     : const EdgeInsets.fromLTRB(14, 12, 8, 8),
                 decoration: BoxDecoration(
                   color: apple
                       ? null
-                      : (isNow
-                          ? t.surface.withOpacity(0.45)
-                          : Colors.black.withOpacity(0.15)),
+                      : (deep
+                          ? (isNow ? const Color(0xFF1A140F) : t.surface)
+                          : (isNow
+                              ? t.surface.withOpacity(0.45)
+                              : Colors.black.withOpacity(0.15))),
                   gradient: apple
                       ? LinearGradient(
                           begin: Alignment.topCenter,
@@ -159,14 +161,16 @@ class SongRow extends StatelessWidget {
                         ? appleBorder
                         : BorderSide(
                             color: deep
-                                ? Colors.white.withOpacity(0.55)
+                                ? (isNow
+                                    ? t.accent.withOpacity(0.45)
+                                    : const Color(0xFF2A2A2A))
                                 : Colors.white.withOpacity(0.18),
                           ),
                   ),
                 ),
                 child: IntrinsicHeight(
                   child: Row(
-                    crossAxisAlignment: apple
+                    crossAxisAlignment: (apple || deep)
                         ? CrossAxisAlignment.stretch
                         : CrossAxisAlignment.center,
                     children: [
@@ -174,8 +178,8 @@ class SongRow extends StatelessWidget {
                         label: isNow && isPlaying ? 'Pause' : 'Play',
                         button: true,
                         child: Container(
-                          width: apple ? 86 : 52,
-                          height: apple ? null : 52,
+                          width: apple ? 86 : (deep ? 72 : 52),
+                          height: (apple || deep) ? null : 52,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(
                                 radius - 2 < 0 ? 0 : radius - 2),
@@ -348,9 +352,11 @@ class SongRow extends StatelessWidget {
                                     label: 'Remove download',
                                     button: true,
                                     child: IconButton(
-                                      icon: const Icon(
+                                      icon: Icon(
                                         Icons.check_circle,
-                                        color: Color(0xFF4CD964),
+                                        color: deep
+                                            ? t.accent
+                                            : const Color(0xFF4CD964),
                                       ),
                                       onPressed: actions.onRemoveDownload,
                                     ),
@@ -420,7 +426,7 @@ class SongRow extends StatelessWidget {
                   bottom: 0,
                   child: Container(
                     width: 4,
-                    color: deep ? const Color(0xFF22C55E) : t.textPrimary,
+                    color: deep ? t.accent : t.textPrimary,
                   ),
                 ),
             ],
@@ -444,17 +450,17 @@ class _DeepPlayButton extends StatelessWidget {
       child: GestureDetector(
         onTap: onTap,
         child: Container(
-          width: 44,
-          height: 44,
+          width: 36,
+          height: 36,
           decoration: BoxDecoration(
             shape: BoxShape.circle,
-            color: playing ? const Color(0xFF22C55E) : const Color(0xFF000000),
-            border: Border.all(color: Colors.white, width: 2.5),
+            color: playing ? const Color(0xFFFF6600) : Colors.white,
+            border: Border.all(color: const Color(0xFFFF6600), width: 2),
           ),
           child: Icon(
             playing ? Icons.pause : Icons.play_arrow,
-            color: playing ? Colors.black : Colors.white,
-            size: 26,
+            color: playing ? Colors.black : const Color(0xFFFF6600),
+            size: 20,
           ),
         ),
       ),
