@@ -183,8 +183,8 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         focusBand.set(Biquad.Type.PEAK, 3200.0, focusDb, sr)
         defBand.set(Biquad.Type.HIGHSHELF, 8000.0, defDb, sr)
         val airDb = if (highGainLin <= 1.001f) 0.0 else 20.0 * log10(highGainLin.toDouble())
-        jhanPeak.set(Biquad.Type.PEAK, 5500.0, airDb * 0.55, sr)
-        jhanAir.set(Biquad.Type.PEAK, 5500.0, 0.0, sr)
+        jhanPeak.set(Biquad.Type.PEAK, 6200.0, airDb * 0.75, sr)
+        jhanAir.set(Biquad.Type.PEAK, 6200.0, 0.0, sr)
         val haas = haasSamples.toDouble() / sampleRate.coerceAtLeast(1)
         haasSamples = (haas * sampleRate).toInt().coerceIn(0, haasBuf.size - 1)
     }
@@ -276,9 +276,9 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
                 jhanSlowL += 0.007f * (mag - jhanSlowL)
                 val hit = (jhanEnvL - jhanSlowL).coerceAtLeast(0f)
                 val punch = (gHigh - 1f).coerceAtLeast(0f)
-                var eh = high * (1f + punch * 0.45f) + spark * punch * (0.40f + hit * 3.6f)
+                var eh = high * (1f + punch * 0.30f) + spark * punch * (0.40f + hit * 6.2f)
                 if (tt > 0.001) {
-                    eh += tanh(spark * (0.45f + hit * 1.6f)) * tt.toFloat()
+                    eh += tanh(spark * (0.40f + hit * 2.2f)) * tt.toFloat()
                 }
                 s = body + eh
             }
@@ -340,11 +340,11 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
                 val hitL = (jhanEnvL - jhanSlowL).coerceAtLeast(0f)
                 val hitR = (jhanEnvR - jhanSlowR).coerceAtLeast(0f)
                 val punch = (gHigh - 1f).coerceAtLeast(0f)
-                var ehL = highL * (1f + punch * 0.45f) + sparkL * punch * (0.40f + hitL * 3.6f)
-                var ehR = highR * (1f + punch * 0.45f) + sparkR * punch * (0.40f + hitR * 3.6f)
+                var ehL = highL * (1f + punch * 0.30f) + sparkL * punch * (0.40f + hitL * 6.2f)
+                var ehR = highR * (1f + punch * 0.30f) + sparkR * punch * (0.40f + hitR * 6.2f)
                 if (tt > 0.001) {
-                    ehL += tanh(sparkL * (0.45f + hitL * 1.6f)) * tt.toFloat()
-                    ehR += tanh(sparkR * (0.45f + hitR * 1.6f)) * tt.toFloat()
+                    ehL += tanh(sparkL * (0.40f + hitL * 2.2f)) * tt.toFloat()
+                    ehR += tanh(sparkR * (0.40f + hitR * 2.2f)) * tt.toFloat()
                 }
                 ol = airLpL + ehL
                 orr = airLpR + ehR
