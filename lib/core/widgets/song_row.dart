@@ -97,6 +97,7 @@ class SongRow extends StatelessWidget {
     final themeId = t.id as AppThemeId;
     final radius = _radius(themeId);
     final deep = themeId == AppThemeId.cyberBlack;
+    final apple = themeId == AppThemeId.silverChrome;
     final defaultBorder = BorderSide(
       color: deep ? Colors.white.withOpacity(0.55) : Colors.white.withOpacity(0.18),
     );
@@ -120,203 +121,221 @@ class SongRow extends StatelessWidget {
           child: Stack(
             children: [
               Container(
-                padding: const EdgeInsets.fromLTRB(14, 12, 8, 8),
+                padding: apple
+                    ? const EdgeInsets.fromLTRB(0, 0, 8, 0)
+                    : const EdgeInsets.fromLTRB(14, 12, 8, 8),
                 decoration: BoxDecoration(
                   color: isNow
                       ? t.surface.withOpacity(0.45)
                       : Colors.black.withOpacity(0.15),
                   border: Border.fromBorderSide(defaultBorder),
                 ),
-                child: Row(
-                  children: [
-                    Semantics(
-                      label: isNow && isPlaying ? 'Pause' : 'Play',
-                      button: true,
-                      child: Container(
-                        width: 52,
-                        height: 52,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(radius - 2 < 0 ? 0 : radius - 2),
-                          border: Border.all(color: t.textPrimary.withOpacity(0.24), width: 2),
-                          gradient: LinearGradient(
-                            begin: Alignment.topLeft,
-                            end: Alignment.bottomRight,
-                            colors: [t.surface, t.background],
+                child: IntrinsicHeight(
+                  child: Row(
+                    crossAxisAlignment: apple
+                        ? CrossAxisAlignment.stretch
+                        : CrossAxisAlignment.center,
+                    children: [
+                      Semantics(
+                        label: isNow && isPlaying ? 'Pause' : 'Play',
+                        button: true,
+                        child: Container(
+                          width: apple ? 86 : 52,
+                          height: apple ? null : 52,
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(radius - 2 < 0 ? 0 : radius - 2),
+                            border: Border.all(color: t.textPrimary.withOpacity(0.24), width: 2),
+                            gradient: LinearGradient(
+                              begin: Alignment.topLeft,
+                              end: Alignment.bottomRight,
+                              colors: [t.surface, t.background],
+                            ),
                           ),
+                          child: (song.coverImageUrl != null && song.coverImageUrl!.isNotEmpty)
+                              ? ClipRRect(
+                                  borderRadius: BorderRadius.circular(radius - 4 < 0 ? 0 : radius - 4),
+                                  child: CachedNetworkImage(
+                                    imageUrl: song.coverImageUrl!,
+                                    fit: BoxFit.cover,
+                                    cacheManager: AppCacheManager.instance,
+                                    memCacheWidth: 128,
+                                    memCacheHeight: 128,
+                                    placeholder: (context, url) => Icon(
+                                      isNow && isPlaying ? Icons.pause : Icons.play_arrow,
+                                      color: t.textPrimary,
+                                    ),
+                                    errorWidget: (context, url, error) => Icon(
+                                      isNow && isPlaying ? Icons.pause : Icons.play_arrow,
+                                      color: t.textPrimary,
+                                    ),
+                                  ),
+                                )
+                              : Icon(
+                                  isNow && isPlaying ? Icons.pause : Icons.play_arrow,
+                                  color: t.textPrimary,
+                                ),
                         ),
-                        child: (song.coverImageUrl != null && song.coverImageUrl!.isNotEmpty)
-                            ? ClipRRect(
-                                borderRadius: BorderRadius.circular(radius - 4 < 0 ? 0 : radius - 4),
-                                child: CachedNetworkImage(
-                                  imageUrl: song.coverImageUrl!,
-                                  fit: BoxFit.cover,
-                                  cacheManager: AppCacheManager.instance,
-                                  memCacheWidth: 128,
-                                  memCacheHeight: 128,
-                                  placeholder: (context, url) => Icon(
-                                    isNow && isPlaying ? Icons.pause : Icons.play_arrow,
-                                    color: t.textPrimary,
-                                  ),
-                                  errorWidget: (context, url, error) => Icon(
-                                    isNow && isPlaying ? Icons.pause : Icons.play_arrow,
-                                    color: t.textPrimary,
-                                  ),
-                                ),
-                              )
-                            : Icon(
-                                isNow && isPlaying ? Icons.pause : Icons.play_arrow,
-                                color: t.textPrimary,
-                              ),
                       ),
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          if (!deep && isNow)
-                            Padding(
-                              padding: const EdgeInsets.only(bottom: 4),
-                              child: Container(
-                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-                                decoration: BoxDecoration(
-                                  color: t.textPrimary.withOpacity(0.20),
-                                  borderRadius: BorderRadius.circular(radius - 6 < 4 ? 4 : radius - 6),
-                                ),
-                                child: Text(
-                                  isPlaying ? 'Ⅱ NOW' : '▶ NOW',
-                                  style: TextStyle(
-                                    color: t.textPrimary,
-                                    fontSize: 11,
-                                    fontWeight: FontWeight.w900,
+                      const SizedBox(width: 12),
+                      Expanded(
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            if (!deep && isNow && !apple)
+                              Padding(
+                                padding: const EdgeInsets.only(bottom: 4),
+                                child: Container(
+                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  decoration: BoxDecoration(
+                                    color: t.textPrimary.withOpacity(0.20),
+                                    borderRadius: BorderRadius.circular(radius - 6 < 4 ? 4 : radius - 6),
                                   ),
-                                ),
-                              ),
-                            ),
-                          Text(
-                            song.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: t.textPrimary,
-                              fontSize: 15,
-                              fontWeight: FontWeight.w900,
-                            ),
-                          ),
-                          const SizedBox(height: 4),
-                          Text(
-                            _subtitleLine(subtitle, song),
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              color: t.textPrimary.withOpacity(0.70),
-                              fontSize: 12.5,
-                              fontWeight: FontWeight.w600,
-                            ),
-                          ),
-                          Row(
-                            children: [
-                              if (deep) ...[
-                                _DeepPlayButton(
-                                  playing: isNow && isPlaying,
-                                  onTap: actions.onTap,
-                                ),
-                              ],
-                              Semantics(
-                                label: isFav ? 'Remove from favorites' : 'Add to favorites',
-                                button: true,
-                                child: IconButton(
-                                  icon: Icon(
-                                    isFav ? Icons.favorite : Icons.favorite_border,
-                                    color: loveColor,
-                                  ),
-                                  onPressed: actions.onToggleFavorite,
-                                ),
-                              ),
-                              Column(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Semantics(
-                                    label: isLiked ? 'Unlike song' : 'Like song',
-                                    button: true,
-                                    child: IconButton(
-                                      icon: Icon(
-                                        isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                                        color: likeColor,
-                                        size: 20,
-                                      ),
-                                      onPressed: actions.onToggleLike,
-                                      padding: EdgeInsets.zero,
-                                      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                                    ),
-                                  ),
-                                  Text(
-                                    formatCount(likeCount),
+                                  child: Text(
+                                    isPlaying ? 'Ⅱ NOW' : '▶ NOW',
                                     style: TextStyle(
-                                      color: t.textPrimary.withOpacity(0.75),
-                                      fontSize: 9,
-                                      fontWeight: FontWeight.w600,
+                                      color: t.textPrimary,
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w900,
                                     ),
                                   ),
-                                ],
+                                ),
                               ),
-                              if (isDownloaded)
-                                Semantics(
-                                  label: 'Remove download',
-                                  button: true,
-                                  child: IconButton(
-                                    icon: const Icon(Icons.check_circle, color: Color(0xFF4CD964)),
-                                    onPressed: actions.onRemoveDownload,
+                            Text(
+                              song.title,
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: t.textPrimary,
+                                fontSize: apple ? 18 : 15,
+                                fontWeight: FontWeight.w900,
+                              ),
+                            ),
+                            const SizedBox(height: 4),
+                            Text(
+                              _subtitleLine(subtitle, song),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
+                              style: TextStyle(
+                                color: t.textPrimary.withOpacity(0.70),
+                                fontSize: 12.5,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            Row(
+                              children: [
+                                if (deep)
+                                  _DeepPlayButton(
+                                    playing: isNow && isPlaying,
+                                    onTap: actions.onTap,
                                   ),
-                                )
-                              else if (isDownloading)
-                                Semantics(
-                                  label: 'Cancel download',
-                                  button: true,
-                                  child: GestureDetector(
-                                    onTap: actions.onCancelDownload,
-                                    child: SizedBox(
-                                      width: 36,
-                                      height: 36,
-                                      child: Stack(
-                                        alignment: Alignment.center,
-                                        children: [
-                                          CircularProgressIndicator(
-                                            value: (progress > 0 && progress < 1) ? progress : null,
-                                            strokeWidth: 2.5,
-                                            color: t.textPrimary,
-                                          ),
-                                          if (progress > 0)
-                                            Text(
-                                              '${(progress * 100).round()}',
-                                              style: TextStyle(fontSize: 8.5, color: t.textPrimary),
-                                            ),
-                                        ],
-                                      ),
+                                if (apple)
+                                  IconButton(
+                                    tooltip: isNow && isPlaying ? 'Pause' : 'Play',
+                                    onPressed: actions.onTap,
+                                    icon: Icon(
+                                      isNow && isPlaying
+                                          ? Icons.pause_circle_filled
+                                          : Icons.play_circle_filled,
+                                      color: t.accent,
+                                      size: 28,
                                     ),
                                   ),
-                                )
-                              else
                                 Semantics(
-                                  label: 'Download song',
+                                  label: isFav ? 'Remove from favorites' : 'Add to favorites',
                                   button: true,
                                   child: IconButton(
                                     icon: Icon(
-                                      Icons.download_outlined,
-                                      color: dlColor,
+                                      isFav ? Icons.favorite : Icons.favorite_border,
+                                      color: loveColor,
                                     ),
-                                    onPressed: () async {
-                                      final ok = await confirmDownload(context, song.title);
-                                      if (ok) actions.onDownload();
-                                    },
+                                    onPressed: actions.onToggleFavorite,
                                   ),
                                 ),
-                            ],
-                          ),
-                        ],
+                                Row(
+                                  mainAxisSize: MainAxisSize.min,
+                                  children: [
+                                    Semantics(
+                                      label: isLiked ? 'Unlike song' : 'Like song',
+                                      button: true,
+                                      child: IconButton(
+                                        icon: Icon(
+                                          isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                                          color: likeColor,
+                                          size: 20,
+                                        ),
+                                        onPressed: actions.onToggleLike,
+                                        padding: EdgeInsets.zero,
+                                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                                      ),
+                                    ),
+                                    Text(
+                                      formatCount(likeCount),
+                                      style: TextStyle(
+                                        color: t.textPrimary.withOpacity(0.75),
+                                        fontSize: 11,
+                                        fontWeight: FontWeight.w600,
+                                      ),
+                                    ),
+                                  ],
+                                ),
+                                if (isDownloaded)
+                                  Semantics(
+                                    label: 'Remove download',
+                                    button: true,
+                                    child: IconButton(
+                                      icon: const Icon(Icons.check_circle, color: Color(0xFF4CD964)),
+                                      onPressed: actions.onRemoveDownload,
+                                    ),
+                                  )
+                                else if (isDownloading)
+                                  Semantics(
+                                    label: 'Cancel download',
+                                    button: true,
+                                    child: GestureDetector(
+                                      onTap: actions.onCancelDownload,
+                                      child: SizedBox(
+                                        width: 36,
+                                        height: 36,
+                                        child: Stack(
+                                          alignment: Alignment.center,
+                                          children: [
+                                            CircularProgressIndicator(
+                                              value: (progress > 0 && progress < 1) ? progress : null,
+                                              strokeWidth: 2.5,
+                                              color: t.textPrimary,
+                                            ),
+                                            if (progress > 0)
+                                              Text(
+                                                '${(progress * 100).round()}',
+                                                style: TextStyle(fontSize: 8.5, color: t.textPrimary),
+                                              ),
+                                          ],
+                                        ),
+                                      ),
+                                    ),
+                                  )
+                                else
+                                  Semantics(
+                                    label: 'Download song',
+                                    button: true,
+                                    child: IconButton(
+                                      icon: Icon(
+                                        Icons.download_outlined,
+                                        color: dlColor,
+                                      ),
+                                      onPressed: () async {
+                                        final ok = await confirmDownload(context, song.title);
+                                        if (ok) actions.onDownload();
+                                      },
+                                    ),
+                                  ),
+                              ],
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
+                    ],
+                  ),
                 ),
               ),
               if (isNow)
