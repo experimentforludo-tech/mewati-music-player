@@ -106,7 +106,8 @@ class EqualizerService {
     }
   }
 
-  bool shouldHintHeadphones(String id) => EqPresets.headphoneHintIds.contains(id);
+  bool shouldHintHeadphones(String id) =>
+      EqPresets.headphoneHintIds.contains(id);
 
   Future<void> applyCustomSnapshot({
     required List<double> bandGains,
@@ -126,7 +127,8 @@ class EqualizerService {
 
   Future<void> setBandGain(int bandIndex, double gainDb) async {
     try {
-      final saved = await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
+      final saved =
+          await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
       final gains = List<double>.from(saved.bandGains);
       if (bandIndex < 0 || bandIndex >= gains.length) return;
       gains[bandIndex] = gainDb.clamp(EqPresets.minDb, EqPresets.maxDb);
@@ -139,7 +141,8 @@ class EqualizerService {
 
   Future<void> setBassBoost(double gainDb) async {
     try {
-      final saved = await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
+      final saved =
+          await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
       final bass = gainDb.clamp(0.0, maxBassBoostDb);
       _schedulePersist(saved.bandGains, bass);
       await _pushCustom(saved.bandGains, bass);
@@ -173,7 +176,7 @@ class EqualizerService {
     }
   }
 
-  Future<void> loadPersistedCustomEq({
+  Future<({List<double> bandGains, double bassBoostDb})> loadPersistedCustomEq({
     required int bandCount,
   }) async {
     try {
