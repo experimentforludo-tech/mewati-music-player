@@ -56,7 +56,7 @@ double _miniPlayerHeightFor(AppThemeId id) {
     case AppThemeId.cyberBlack:
       return 244.0;
     case AppThemeId.silverChrome:
-      return 118.0;
+      return 128.0;
     default:
       return AppDimensions.miniPlayerHeight;
   }
