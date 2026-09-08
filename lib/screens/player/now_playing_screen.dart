@@ -33,6 +33,7 @@ class NowPlayingScreen extends StatefulWidget {
 
 class _NowPlayingScreenState extends State<NowPlayingScreen> {
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+  int _drawerEpoch = 0;
 
   void _openSleepTimerSheet() {
     showModalBottomSheet(
@@ -42,9 +43,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     );
   }
 
-  // FIXED: previously opened the full AppDrawer (theme picker + EQ presets
-  // + feedback), which isn't the actual equalizer. This now takes the user
-  // straight to the Custom Equalizer tab in Advance Settings.
   void _openEqualizerSettings() {
     Navigator.of(context).pushNamed(RouteNames.advanceSettings);
   }
@@ -59,8 +57,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
         context.select<PlayerProvider, String?>((p) => p.errorMessage);
 
     if (!hasSong || song == null) {
-      // FIXED: empty state now shares the same gradient + top bar chrome
-      // as the normal Now Playing state instead of a bare flat background.
       return Scaffold(
         body: Container(
           decoration: BoxDecoration(
@@ -112,7 +108,10 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      drawer: const AppDrawer(),
+      drawer: AppDrawer(key: ValueKey(_drawerEpoch)),
+      onDrawerChanged: (open) {
+        if (!open) setState(() => _drawerEpoch++);
+      },
       body: Container(
         decoration: BoxDecoration(
           gradient: LinearGradient(
@@ -148,12 +147,6 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
                   ],
                 ),
               ),
-              // FIXED: was a bare Expanded > Column(mainAxisAlignment:
-              // center) with no scroll fallback — on short screens (or with
-              // the error banner showing) this threw a RenderFlex overflow.
-              // Now wrapped in a LayoutBuilder + SingleChildScrollView with
-              // a minHeight ConstrainedBox, so it still centers on tall
-              // screens but scrolls instead of overflowing on short ones.
               Expanded(
                 child: LayoutBuilder(
                   builder: (context, constraints) {
@@ -290,4 +283,3 @@ class _NowPlayingScreenState extends State<NowPlayingScreen> {
     );
   }
 }
-
