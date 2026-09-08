@@ -151,7 +151,7 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
 
   Widget _seek(PlayerProvider player, Color accent) {
     return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 24),
+      padding: const EdgeInsets.symmetric(horizontal: 4),
       child: ValueListenableBuilder<Duration>(
         valueListenable: player.durationNotifier,
         builder: (context, duration, _) {
@@ -183,6 +183,7 @@ class _DriveModeScreenState extends State<DriveModeScreen> {
                       thumbColor: Colors.white,
                     ),
                     child: Slider(
+                      padding: EdgeInsets.zero,
                       value: displayValue,
                       max: sliderMax,
                       onChanged: (value) => setState(() => _dragValue = value),
