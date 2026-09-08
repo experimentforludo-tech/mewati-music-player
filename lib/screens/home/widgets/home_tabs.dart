@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import '../../../core/constants/app_strings.dart';
 import '../../../core/constants/themes/app_theme_id.dart';
+import '../../../providers/player_provider.dart';
 import '../../../providers/theme_provider.dart';
 
 class HomeTabs extends StatelessWidget {
@@ -34,8 +35,11 @@ class HomeTabs extends StatelessWidget {
   Widget build(BuildContext context) {
     final t = context.watch<ThemeProvider>().theme;
     if (t.id == AppThemeId.silverChrome) {
+      final playing = context.select<PlayerProvider, bool>((p) => p.hasSong);
+      final inset = playing ? 0.0 : MediaQuery.of(context).padding.bottom;
       return Container(
-        height: 81,
+        height: 44 + inset,
+        padding: EdgeInsets.only(bottom: inset),
         decoration: BoxDecoration(
           color: t.background,
           border: const Border(top: BorderSide(color: Color(0x1AFFFFFF))),
@@ -52,7 +56,7 @@ class HomeTabs extends StatelessWidget {
                   onTap: () => onTabSelected(index),
                   child: Icon(
                     _icons[index],
-                    size: 35,
+                    size: 26,
                     color: on ? t.accent : t.textSecondary,
                   ),
                 ),
