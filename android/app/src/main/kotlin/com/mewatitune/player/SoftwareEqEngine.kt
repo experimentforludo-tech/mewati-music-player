@@ -12,13 +12,6 @@ import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.tanh
 
-/**
- * 10-band + TruBass + M/S width + Haas + focus/definition.
- * Registered as the Media3 AudioProcessor engine (just_audio fork).
- * Never uses AudioEffect.EQUALIZER (Bluetooth A2DP skips that).
- *
- * If [init]/[apply] throws, Dart keeps playback dry.
- */
 class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, SoftwareEqAudioProcessor.Engine {
     private var channel: MethodChannel? = null
 
@@ -186,8 +179,15 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         }
     }
 
-    private fun applyHeadroom(pcm: ShortArray, frames: Int, channels: Int, dryPeak: Float, wetPeak: Float) {
-        val ceiling = minOf(0.89f, dryPeak.coerceAtLeast(1.0e-6f))
+    private fun applyHeadroom(
+        pcm: ShortArray,
+        frames: Int,
+        channels: Int,
+        dryPeak: Float,
+        wetPeak: Float,
+        matchDry: Boolean,
+    ) {
+        val ceiling = if (matchDry) minOf(0.89f, dryPeak.coerceAtLeast(1.0e-6f)) else 0.89f
         val need = if (wetPeak > ceiling) ceiling / wetPeak else 1f
         headroomLin += (need - headroomLin) * 0.12f
         val g = headroomLin
@@ -232,7 +232,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             if (aw > wetPeak) wetPeak = aw
             pcm[n] = (s.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
         }
-        applyHeadroom(pcm, frames, 1, dryPeak, wetPeak)
+        applyHeadroom(pcm, frames, 1, dryPeak, wetPeak, matchDry = false)
     }
 
     private fun processStereoSplit(pcm: ShortArray, frames: Int, channels: Int) {
@@ -268,7 +268,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             pcm[i + 1] = (orr.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
             i += channels
         }
-        applyHeadroom(pcm, frames, channels, dryPeak, wetPeak)
+        applyHeadroom(pcm, frames, channels, dryPeak, wetPeak, matchDry = false)
     }
 
     private fun processMono(pcm: ShortArray, frames: Int) {
@@ -297,7 +297,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             if (aw > wetPeak) wetPeak = aw
             pcm[n] = (s.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
         }
-        applyHeadroom(pcm, frames, 1, dryPeak, wetPeak)
+        applyHeadroom(pcm, frames, 1, dryPeak, wetPeak, matchDry = true)
     }
 
     private fun processStereo(pcm: ShortArray, frames: Int, channels: Int) {
@@ -356,7 +356,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             pcm[i + 1] = (orr.coerceIn(-1f, 1f) * 32767f).toInt().toShort()
             i += channels
         }
-        applyHeadroom(pcm, frames, channels, dryPeak, wetPeak)
+        applyHeadroom(pcm, frames, channels, dryPeak, wetPeak, matchDry = true)
     }
 
     private class Biquad {
