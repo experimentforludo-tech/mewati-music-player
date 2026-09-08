@@ -98,7 +98,6 @@ class SongRow extends StatelessWidget {
     final radius = _radius(themeId);
     final deep = themeId == AppThemeId.cyberBlack;
     final apple = themeId == AppThemeId.silverChrome;
-    final appleFill = isNow ? const Color(0xFF1C3324) : const Color(0xFF121C16);
     final appleBorder = BorderSide(
       color: isNow ? const Color(0x668FDB5A) : const Color(0x228FDB5A),
     );
@@ -116,7 +115,22 @@ class SongRow extends StatelessWidget {
       onLongPress: actions.onLongPress,
       borderRadius: BorderRadius.circular(radius),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+        margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+        decoration: BoxDecoration(
+          borderRadius: BorderRadius.circular(radius),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(apple ? 0.55 : 0.42),
+              blurRadius: apple ? 16 : 12,
+              offset: const Offset(0, 6),
+            ),
+            BoxShadow(
+              color: Colors.white.withOpacity(apple ? 0.10 : 0.07),
+              blurRadius: 1,
+              offset: const Offset(0, -1),
+            ),
+          ],
+        ),
         child: ClipRRect(
           borderRadius: BorderRadius.circular(radius),
           child: Stack(
@@ -127,10 +141,19 @@ class SongRow extends StatelessWidget {
                     : const EdgeInsets.fromLTRB(14, 12, 8, 8),
                 decoration: BoxDecoration(
                   color: apple
-                      ? appleFill
+                      ? null
                       : (isNow
                           ? t.surface.withOpacity(0.45)
                           : Colors.black.withOpacity(0.15)),
+                  gradient: apple
+                      ? LinearGradient(
+                          begin: Alignment.topCenter,
+                          end: Alignment.bottomCenter,
+                          colors: isNow
+                              ? const [Color(0xFF274433), Color(0xFF15241C)]
+                              : const [Color(0xFF1A2A22), Color(0xFF0E1612)],
+                        )
+                      : null,
                   border: Border.fromBorderSide(
                     apple
                         ? appleBorder
@@ -154,7 +177,8 @@ class SongRow extends StatelessWidget {
                           width: apple ? 86 : 52,
                           height: apple ? null : 52,
                           decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(radius - 2 < 0 ? 0 : radius - 2),
+                            borderRadius: BorderRadius.circular(
+                                radius - 2 < 0 ? 0 : radius - 2),
                             border: Border.all(
                               color: apple
                                   ? const Color(0x338FDB5A)
@@ -167,9 +191,11 @@ class SongRow extends StatelessWidget {
                               colors: [t.surface, t.background],
                             ),
                           ),
-                          child: (song.coverImageUrl != null && song.coverImageUrl!.isNotEmpty)
+                          child: (song.coverImageUrl != null &&
+                                  song.coverImageUrl!.isNotEmpty)
                               ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(radius - 4 < 0 ? 0 : radius - 4),
+                                  borderRadius: BorderRadius.circular(
+                                      radius - 4 < 0 ? 0 : radius - 4),
                                   child: CachedNetworkImage(
                                     imageUrl: song.coverImageUrl!,
                                     fit: BoxFit.cover,
@@ -177,17 +203,23 @@ class SongRow extends StatelessWidget {
                                     memCacheWidth: 128,
                                     memCacheHeight: 128,
                                     placeholder: (context, url) => Icon(
-                                      isNow && isPlaying ? Icons.pause : Icons.play_arrow,
+                                      isNow && isPlaying
+                                          ? Icons.pause
+                                          : Icons.play_arrow,
                                       color: t.textPrimary,
                                     ),
                                     errorWidget: (context, url, error) => Icon(
-                                      isNow && isPlaying ? Icons.pause : Icons.play_arrow,
+                                      isNow && isPlaying
+                                          ? Icons.pause
+                                          : Icons.play_arrow,
                                       color: t.textPrimary,
                                     ),
                                   ),
                                 )
                               : Icon(
-                                  isNow && isPlaying ? Icons.pause : Icons.play_arrow,
+                                  isNow && isPlaying
+                                      ? Icons.pause
+                                      : Icons.play_arrow,
                                   color: t.textPrimary,
                                 ),
                         ),
@@ -201,10 +233,12 @@ class SongRow extends StatelessWidget {
                               Padding(
                                 padding: const EdgeInsets.only(bottom: 4),
                                 child: Container(
-                                  padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                  padding: const EdgeInsets.symmetric(
+                                      horizontal: 8, vertical: 3),
                                   decoration: BoxDecoration(
                                     color: t.textPrimary.withOpacity(0.20),
-                                    borderRadius: BorderRadius.circular(radius - 6 < 4 ? 4 : radius - 6),
+                                    borderRadius: BorderRadius.circular(
+                                        radius - 6 < 4 ? 4 : radius - 6),
                                   ),
                                   child: Text(
                                     isPlaying ? 'Ⅱ NOW' : '▶ NOW',
@@ -221,7 +255,9 @@ class SongRow extends StatelessWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: apple ? const Color(0xFFF4FFF6) : t.textPrimary,
+                                color: apple
+                                    ? const Color(0xFFF4FFF6)
+                                    : t.textPrimary,
                                 fontSize: apple ? 18 : 15,
                                 fontWeight: FontWeight.w900,
                               ),
@@ -246,7 +282,9 @@ class SongRow extends StatelessWidget {
                                   ),
                                 if (apple)
                                   IconButton(
-                                    tooltip: isNow && isPlaying ? 'Pause' : 'Play',
+                                    tooltip: isNow && isPlaying
+                                        ? 'Pause'
+                                        : 'Play',
                                     onPressed: actions.onTap,
                                     icon: Icon(
                                       isNow && isPlaying
@@ -257,11 +295,15 @@ class SongRow extends StatelessWidget {
                                     ),
                                   ),
                                 Semantics(
-                                  label: isFav ? 'Remove from favorites' : 'Add to favorites',
+                                  label: isFav
+                                      ? 'Remove from favorites'
+                                      : 'Add to favorites',
                                   button: true,
                                   child: IconButton(
                                     icon: Icon(
-                                      isFav ? Icons.favorite : Icons.favorite_border,
+                                      isFav
+                                          ? Icons.favorite
+                                          : Icons.favorite_border,
                                       color: loveColor,
                                     ),
                                     onPressed: actions.onToggleFavorite,
@@ -271,17 +313,24 @@ class SongRow extends StatelessWidget {
                                   mainAxisSize: MainAxisSize.min,
                                   children: [
                                     Semantics(
-                                      label: isLiked ? 'Unlike song' : 'Like song',
+                                      label: isLiked
+                                          ? 'Unlike song'
+                                          : 'Like song',
                                       button: true,
                                       child: IconButton(
                                         icon: Icon(
-                                          isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                                          isLiked
+                                              ? Icons.thumb_up
+                                              : Icons.thumb_up_outlined,
                                           color: likeColor,
                                           size: 20,
                                         ),
                                         onPressed: actions.onToggleLike,
                                         padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(minWidth: 40, minHeight: 40),
+                                        constraints: const BoxConstraints(
+                                          minWidth: 40,
+                                          minHeight: 40,
+                                        ),
                                       ),
                                     ),
                                     Text(
@@ -299,7 +348,10 @@ class SongRow extends StatelessWidget {
                                     label: 'Remove download',
                                     button: true,
                                     child: IconButton(
-                                      icon: const Icon(Icons.check_circle, color: Color(0xFF4CD964)),
+                                      icon: const Icon(
+                                        Icons.check_circle,
+                                        color: Color(0xFF4CD964),
+                                      ),
                                       onPressed: actions.onRemoveDownload,
                                     ),
                                   )
@@ -316,14 +368,20 @@ class SongRow extends StatelessWidget {
                                           alignment: Alignment.center,
                                           children: [
                                             CircularProgressIndicator(
-                                              value: (progress > 0 && progress < 1) ? progress : null,
+                                              value: (progress > 0 &&
+                                                      progress < 1)
+                                                  ? progress
+                                                  : null,
                                               strokeWidth: 2.5,
                                               color: t.textPrimary,
                                             ),
                                             if (progress > 0)
                                               Text(
                                                 '${(progress * 100).round()}',
-                                                style: TextStyle(fontSize: 8.5, color: t.textPrimary),
+                                                style: TextStyle(
+                                                  fontSize: 8.5,
+                                                  color: t.textPrimary,
+                                                ),
                                               ),
                                           ],
                                         ),
@@ -340,7 +398,8 @@ class SongRow extends StatelessWidget {
                                         color: dlColor,
                                       ),
                                       onPressed: () async {
-                                        final ok = await confirmDownload(context, song.title);
+                                        final ok = await confirmDownload(
+                                            context, song.title);
                                         if (ok) actions.onDownload();
                                       },
                                     ),
