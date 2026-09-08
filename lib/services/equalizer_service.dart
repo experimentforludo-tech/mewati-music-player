@@ -36,11 +36,14 @@ class EqualizerService {
   double? _pendingBass;
   String _activeId = defaultPresetId;
   double _vol = 1.0;
+  double _intentVol = 1.0;
+  bool _writingVol = false;
   StreamSubscription<double>? _volSub;
   Timer? _volDebounce;
 
-  static const _loudIds = {'mewati-bass', 'beats'};
-  static const _bassScaleIds = {'beats'};
+  static const _loudIds = {'mewati-bass'};
+  static const _streamBoostIds = {'beats'};
+  static const _bassScaleIds = <String>{};
 
   static double bassScaleForVolume(double vol) =>
       (1.65 - 1.5 * vol.clamp(0.0, 1.0)).clamp(0.35, 1.50);
@@ -95,12 +98,18 @@ class EqualizerService {
     _volSub?.cancel();
     try {
       _vol = await SystemVolume.get();
+      _intentVol = _vol;
     } catch (_) {
       _vol = 1.0;
+      _intentVol = 1.0;
     }
     _volSub = SystemVolume.changes.listen((v) {
       _vol = v;
-      if (!_loudIds.contains(_activeId) && !_bassScaleIds.contains(_activeId)) {
+      if (_writingVol) return;
+      _intentVol = v;
+      if (!_loudIds.contains(_activeId) &&
+          !_streamBoostIds.contains(_activeId) &&
+          !_bassScaleIds.contains(_activeId)) {
         return;
       }
       _volDebounce?.cancel();
@@ -267,14 +276,33 @@ class EqualizerService {
       var truBass = p.advanced ? p.truBass : 0.0;
       var makeup = p.advanced ? p.makeup : 0.0;
       if (_bassScaleIds.contains(p.id)) {
-        final s = bassScaleForVolume(_vol);
+        final s = bassScaleForVolume(_intentVol);
         if (gains.length > 1) {
           gains[1] = (gains[1] * s).clamp(EqPresets.minDb, EqPresets.maxDb);
         }
         truBass = (truBass * s).clamp(0.0, 1.0);
       }
       if (_loudIds.contains(p.id)) {
-        makeup += loudnessMakeupDb(_vol);
+        makeup += loudnessMakeupDb(_intentVol);
+      }
+      if (_streamBoostIds.contains(p.id)) {
+        final net =
+            (_intentVol * (1.0 + loudnessBoostPct(_intentVol))).clamp(0.0, 1.0);
+        if ((net - _vol).abs() > 0.02) {
+          _writingVol = true;
+          unawaited(SystemVolume.set(net).whenComplete(() {
+            Future<void>.delayed(const Duration(milliseconds: 120), () {
+              _writingVol = false;
+            });
+          }));
+        }
+      } else if ((_intentVol - _vol).abs() > 0.02) {
+        _writingVol = true;
+        unawaited(SystemVolume.set(_intentVol).whenComplete(() {
+          Future<void>.delayed(const Duration(milliseconds: 120), () {
+            _writingVol = false;
+          });
+        }));
       }
       await _channel.invokeMethod('apply', {
         'gains': gains,
