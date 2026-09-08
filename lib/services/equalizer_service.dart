@@ -49,21 +49,32 @@ class EqualizerService {
   static double bassScaleForVolume(double vol) =>
       (1.65 - 1.5 * vol.clamp(0.0, 1.0)).clamp(0.35, 1.50);
 
-  static double loudnessBoostPct(double vol) {
+  static double loudnessBoostPctOriginal(double vol) {
     const pts = <List<double>>[
-      [0.00, 0.35],
-      [0.01, 0.35],
-      [0.10, 0.28],
-      [0.20, 0.28],
-      [0.30, 0.24],
-      [0.40, 0.20],
-      [0.50, 0.16],
-      [0.60, 0.13],
-      [0.70, 0.10],
-      [0.80, 0.08],
-      [0.90, 0.05],
-      [1.00, 0.03],
+      [0.00, 1.00],
+      [0.01, 1.00],
+      [0.10, 0.60],
+      [0.20, 0.60],
+      [0.30, 0.50],
+      [0.40, 0.40],
+      [0.50, 0.35],
+      [0.60, 0.30],
+      [0.70, 0.25],
+      [0.80, 0.20],
+      [0.90, 0.15],
+      [1.00, 0.10],
     ];
+    return _lerpPts(pts, vol, 0.10);
+  }
+
+  static double loudnessBoostPctFor(String id, double vol) {
+    if (id == 'mewati-bass' || id == 'beats') {
+      return loudnessBoostPctOriginal(vol);
+    }
+    return 0.0;
+  }
+
+  static double _lerpPts(List<List<double>> pts, double vol, double fallback) {
     final v = vol.clamp(0.0, 1.0);
     for (var i = 1; i < pts.length; i++) {
       if (v <= pts[i][0]) {
@@ -71,11 +82,17 @@ class EqualizerService {
         return pts[i - 1][1] + t * (pts[i][1] - pts[i - 1][1]);
       }
     }
-    return 0.03;
+    return fallback;
   }
 
   static double loudnessMakeupDb(double vol) {
-    final lin = 1.0 + loudnessBoostPct(vol);
+    final lin = 1.0 + loudnessBoostPctOriginal(vol);
+    return 20.0 * math.log(lin) / math.ln10;
+  }
+
+  static double loudnessMakeupDbFor(String id, double vol) {
+    final lin = 1.0 + loudnessBoostPctFor(id, vol);
+    if (lin <= 1.0) return 0.0;
     return 20.0 * math.log(lin) / math.ln10;
   }
 
@@ -302,11 +319,12 @@ class EqualizerService {
         truBass = (truBass * s).clamp(0.0, 1.0);
       }
       if (_loudIds.contains(p.id)) {
-        makeup += loudnessMakeupDb(_intentVol);
+        makeup += loudnessMakeupDbFor(p.id, _intentVol);
       }
       if (_streamBoostIds.contains(p.id)) {
-        final net =
-            (_intentVol * (1.0 + loudnessBoostPct(_intentVol))).clamp(0.0, 1.0);
+        final net = (_intentVol *
+                (1.0 + loudnessBoostPctFor(p.id, _intentVol)))
+            .clamp(0.0, 1.0);
         if ((net - _vol).abs() > 0.02) {
           _writingVol = true;
           unawaited(SystemVolume.set(net).whenComplete(() {
