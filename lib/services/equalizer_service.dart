@@ -1,5 +1,6 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -38,10 +39,37 @@ class EqualizerService {
   StreamSubscription<double>? _volSub;
   Timer? _volDebounce;
 
-  static const _bassSyncIds = {'mewati-bass', 'beats'};
+  static const _bassSyncIds = {'mewati-bass', 'beats', 'wow'};
 
-  static double bassScaleForVolume(double vol) =>
-      (1.65 - 1.5 * vol.clamp(0.0, 1.0)).clamp(0.35, 1.50);
+  static double loudnessBoostPct(double vol) {
+    const pts = <List<double>>[
+      [0.00, 1.00],
+      [0.01, 1.00],
+      [0.10, 0.60],
+      [0.20, 0.60],
+      [0.30, 0.50],
+      [0.40, 0.40],
+      [0.50, 0.35],
+      [0.60, 0.30],
+      [0.70, 0.25],
+      [0.80, 0.20],
+      [0.90, 0.15],
+      [1.00, 0.10],
+    ];
+    final v = vol.clamp(0.0, 1.0);
+    for (var i = 1; i < pts.length; i++) {
+      if (v <= pts[i][0]) {
+        final t = (v - pts[i - 1][0]) / (pts[i][0] - pts[i - 1][0]);
+        return pts[i - 1][1] + t * (pts[i][1] - pts[i - 1][1]);
+      }
+    }
+    return 0.10;
+  }
+
+  static double loudnessMakeupDb(double vol) {
+    final lin = 1.0 + loudnessBoostPct(vol);
+    return 20.0 * math.log(lin) / math.ln10;
+  }
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -230,13 +258,10 @@ class EqualizerService {
       var gains = List<double>.from(
         p.advanced ? p.gains : EqPresets.upsample5to10(p.gains),
       );
-      var truBass = p.advanced ? p.truBass : 0.0;
+      final truBass = p.advanced ? p.truBass : 0.0;
+      var makeup = p.advanced ? p.makeup : 0.0;
       if (_bassSyncIds.contains(p.id)) {
-        final s = bassScaleForVolume(_vol);
-        if (gains.length > 1) {
-          gains[1] = (gains[1] * s).clamp(EqPresets.minDb, EqPresets.maxDb);
-        }
-        truBass = (truBass * s).clamp(0.0, 1.0);
+        makeup += loudnessMakeupDb(_vol);
       }
       await _channel.invokeMethod('apply', {
         'gains': gains,
@@ -245,7 +270,7 @@ class EqualizerService {
         'truBass': truBass,
         'focus': p.advanced ? p.focus : 0.0,
         'definition': p.advanced ? p.definition : 0.0,
-        'makeup': p.advanced ? p.makeup : 0.0,
+        'makeup': makeup,
         'compress': p.advanced && p.compress,
         'haas': p.advanced ? p.haas : 0.0,
         'air': p.advanced ? p.air : 0.0,
