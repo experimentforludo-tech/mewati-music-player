@@ -50,7 +50,7 @@ class EqPresets {
     EqPreset(
       id: 'mewati-bass',
       label: 'Mewati Bass™',
-      gains: [0, 5.0, 0, 0, 0, 0, 0, 0, 0, 0],
+      gains: [0, 5.3, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
       truBass: 0.30,
@@ -61,10 +61,10 @@ class EqPresets {
     EqPreset(
       id: 'beats',
       label: 'Mewati Beats™',
-      gains: [0, 5.5, 0, 0, 0, 0, 0, 0, 0, 0],
+      gains: [0, 5.3, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.26,
+      truBass: 0.30,
       air: 0,
       truTreble: 0,
       advanced: true,
