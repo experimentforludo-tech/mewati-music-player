@@ -48,6 +48,8 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
     private val jhanAir = Biquad()
     private var jhanEnvL = 0f
     private var jhanEnvR = 0f
+    private var jhanSlowL = 0f
+    private var jhanSlowR = 0f
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         channel = MethodChannel(binding.binaryMessenger, "mewati.sound/dsp")
@@ -105,6 +107,8 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             jhanAir.reset()
             jhanEnvL = 0f
             jhanEnvR = 0f
+            jhanSlowL = 0f
+            jhanSlowR = 0f
         }
     }
 
@@ -179,8 +183,8 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         focusBand.set(Biquad.Type.PEAK, 3200.0, focusDb, sr)
         defBand.set(Biquad.Type.HIGHSHELF, 8000.0, defDb, sr)
         val airDb = if (highGainLin <= 1.001f) 0.0 else 20.0 * log10(highGainLin.toDouble())
-        jhanPeak.set(Biquad.Type.PEAK, 4800.0, airDb * 0.95, sr)
-        jhanAir.set(Biquad.Type.PEAK, 6500.0, airDb * 0.40, sr)
+        jhanPeak.set(Biquad.Type.PEAK, 7500.0, airDb * 0.35, sr)
+        jhanAir.set(Biquad.Type.PEAK, 7500.0, 0.0, sr)
         val haas = haasSamples.toDouble() / sampleRate.coerceAtLeast(1)
         haasSamples = (haas * sampleRate).toInt().coerceIn(0, haasBuf.size - 1)
     }
@@ -234,7 +238,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         (2.0 * PI * 150.0 / sampleRate).toFloat().coerceIn(0.02f, 0.35f)
 
     private fun airAlpha(): Float =
-        (2.0 * PI * 2600.0 / sampleRate).toFloat().coerceIn(0.12f, 0.40f)
+        (2.0 * PI * 6500.0 / sampleRate).toFloat().coerceIn(0.20f, 0.92f)
 
     private fun processMonoSplit(pcm: ShortArray, frames: Int) {
         val tb = truBass * 0.92
@@ -266,13 +270,15 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
                 airLpL += aAir * (s - airLpL)
                 val high = s - airLpL
                 val body = airLpL
-                val spark0 = jhanPeak.tickL(high)
-                val spark = jhanAir.tickL(spark0)
+                val spark = jhanPeak.tickL(high)
                 val mag = abs(spark)
-                if (mag > jhanEnvL) jhanEnvL = mag else jhanEnvL += 0.04f * (mag - jhanEnvL)
-                var eh = spark * (1f + (gHigh - 1f) * (jhanEnvL * 1.35f).coerceAtMost(1.4f))
+                if (mag > jhanEnvL) jhanEnvL = mag else jhanEnvL += 0.22f * (mag - jhanEnvL)
+                jhanSlowL += 0.018f * (mag - jhanSlowL)
+                val hit = (jhanEnvL - jhanSlowL * 1.15f).coerceAtLeast(0f)
+                val punch = (gHigh - 1f).coerceAtLeast(0f)
+                var eh = high + spark * punch * hit * 4.2f
                 if (tt > 0.001) {
-                    eh += tanh((spark - high) * 1.25f) * tt.toFloat()
+                    eh += tanh(spark * hit * 2.2f) * tt.toFloat()
                 }
                 s = body + eh
             }
@@ -324,18 +330,22 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
                 airLpR += aAir * (orr - airLpR)
                 val highL = ol - airLpL
                 val highR = orr - airLpR
-                val sparkL = jhanAir.tickL(jhanPeak.tickL(highL))
-                val sparkR = jhanAir.tickR(jhanPeak.tickR(highR))
+                val sparkL = jhanPeak.tickL(highL)
+                val sparkR = jhanPeak.tickR(highR)
                 val magL = abs(sparkL)
                 val magR = abs(sparkR)
-                if (magL > jhanEnvL) jhanEnvL = magL else jhanEnvL += 0.04f * (magL - jhanEnvL)
-                if (magR > jhanEnvR) jhanEnvR = magR else jhanEnvR += 0.04f * (magR - jhanEnvR)
+                if (magL > jhanEnvL) jhanEnvL = magL else jhanEnvL += 0.22f * (magL - jhanEnvL)
+                if (magR > jhanEnvR) jhanEnvR = magR else jhanEnvR += 0.22f * (magR - jhanEnvR)
+                jhanSlowL += 0.018f * (magL - jhanSlowL)
+                jhanSlowR += 0.018f * (magR - jhanSlowR)
+                val hitL = (jhanEnvL - jhanSlowL * 1.15f).coerceAtLeast(0f)
+                val hitR = (jhanEnvR - jhanSlowR * 1.15f).coerceAtLeast(0f)
                 val punch = (gHigh - 1f).coerceAtLeast(0f)
-                var ehL = sparkL * (1f + punch * (jhanEnvL * 1.35f).coerceAtMost(1.4f))
-                var ehR = sparkR * (1f + punch * (jhanEnvR * 1.35f).coerceAtMost(1.4f))
+                var ehL = highL + sparkL * punch * hitL * 4.2f
+                var ehR = highR + sparkR * punch * hitR * 4.2f
                 if (tt > 0.001) {
-                    ehL += tanh((sparkL - highL) * 1.25f) * tt.toFloat()
-                    ehR += tanh((sparkR - highR) * 1.25f) * tt.toFloat()
+                    ehL += tanh(sparkL * hitL * 2.2f) * tt.toFloat()
+                    ehR += tanh(sparkR * hitR * 2.2f) * tt.toFloat()
                 }
                 ol = airLpL + ehL
                 orr = airLpR + ehR
