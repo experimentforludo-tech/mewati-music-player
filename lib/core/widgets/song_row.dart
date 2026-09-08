@@ -120,7 +120,7 @@ class SongRow extends StatelessWidget {
           child: Stack(
             children: [
               Container(
-                padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                padding: const EdgeInsets.fromLTRB(14, 12, 8, 8),
                 decoration: BoxDecoration(
                   color: isNow
                       ? t.surface.withOpacity(0.45)
@@ -174,9 +174,28 @@ class SongRow extends StatelessWidget {
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
+                          if (!deep && isNow)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: t.textPrimary.withOpacity(0.20),
+                                  borderRadius: BorderRadius.circular(radius - 6 < 4 ? 4 : radius - 6),
+                                ),
+                                child: Text(
+                                  isPlaying ? 'Ⅱ NOW' : '▶ NOW',
+                                  style: TextStyle(
+                                    color: t.textPrimary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                            ),
                           Text(
                             song.title,
-                            maxLines: 1,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
                             style: TextStyle(
                               color: t.textPrimary,
@@ -195,129 +214,108 @@ class SongRow extends StatelessWidget {
                               fontWeight: FontWeight.w600,
                             ),
                           ),
+                          Row(
+                            children: [
+                              if (deep) ...[
+                                _DeepPlayButton(
+                                  playing: isNow && isPlaying,
+                                  onTap: actions.onTap,
+                                ),
+                              ],
+                              Semantics(
+                                label: isFav ? 'Remove from favorites' : 'Add to favorites',
+                                button: true,
+                                child: IconButton(
+                                  icon: Icon(
+                                    isFav ? Icons.favorite : Icons.favorite_border,
+                                    color: loveColor,
+                                  ),
+                                  onPressed: actions.onToggleFavorite,
+                                ),
+                              ),
+                              Column(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Semantics(
+                                    label: isLiked ? 'Unlike song' : 'Like song',
+                                    button: true,
+                                    child: IconButton(
+                                      icon: Icon(
+                                        isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
+                                        color: likeColor,
+                                        size: 20,
+                                      ),
+                                      onPressed: actions.onToggleLike,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
+                                    ),
+                                  ),
+                                  Text(
+                                    formatCount(likeCount),
+                                    style: TextStyle(
+                                      color: t.textPrimary.withOpacity(0.75),
+                                      fontSize: 9,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (isDownloaded)
+                                Semantics(
+                                  label: 'Remove download',
+                                  button: true,
+                                  child: IconButton(
+                                    icon: const Icon(Icons.check_circle, color: Color(0xFF4CD964)),
+                                    onPressed: actions.onRemoveDownload,
+                                  ),
+                                )
+                              else if (isDownloading)
+                                Semantics(
+                                  label: 'Cancel download',
+                                  button: true,
+                                  child: GestureDetector(
+                                    onTap: actions.onCancelDownload,
+                                    child: SizedBox(
+                                      width: 36,
+                                      height: 36,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          CircularProgressIndicator(
+                                            value: (progress > 0 && progress < 1) ? progress : null,
+                                            strokeWidth: 2.5,
+                                            color: t.textPrimary,
+                                          ),
+                                          if (progress > 0)
+                                            Text(
+                                              '${(progress * 100).round()}',
+                                              style: TextStyle(fontSize: 8.5, color: t.textPrimary),
+                                            ),
+                                        ],
+                                      ),
+                                    ),
+                                  ),
+                                )
+                              else
+                                Semantics(
+                                  label: 'Download song',
+                                  button: true,
+                                  child: IconButton(
+                                    icon: Icon(
+                                      Icons.download_outlined,
+                                      color: dlColor,
+                                    ),
+                                    onPressed: () async {
+                                      final ok = await confirmDownload(context, song.title);
+                                      if (ok) actions.onDownload();
+                                    },
+                                  ),
+                                ),
+                            ],
+                          ),
                         ],
                       ),
                     ),
-                    if (deep) ...[
-                      _DeepPlayButton(
-                        playing: isNow && isPlaying,
-                        onTap: actions.onTap,
-                      ),
-                      const SizedBox(width: 4),
-                    ] else if (isNow)
-                      Padding(
-                        padding: const EdgeInsets.only(right: 6),
-                        child: ConstrainedBox(
-                          constraints: const BoxConstraints(maxWidth: 54),
-                          child: FittedBox(
-                            fit: BoxFit.scaleDown,
-                            child: Container(
-                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
-                              decoration: BoxDecoration(
-                                color: t.textPrimary.withOpacity(0.20),
-                                borderRadius: BorderRadius.circular(radius - 6 < 4 ? 4 : radius - 6),
-                              ),
-                              child: Text(
-                                isPlaying ? 'Ⅱ NOW' : '▶ NOW',
-                                style: TextStyle(
-                                  color: t.textPrimary,
-                                  fontSize: 11,
-                                  fontWeight: FontWeight.w900,
-                                ),
-                              ),
-                            ),
-                          ),
-                        ),
-                      ),
-                    Semantics(
-                      label: isFav ? 'Remove from favorites' : 'Add to favorites',
-                      button: true,
-                      child: IconButton(
-                        icon: Icon(
-                          isFav ? Icons.favorite : Icons.favorite_border,
-                          color: loveColor,
-                        ),
-                        onPressed: actions.onToggleFavorite,
-                      ),
-                    ),
-                    Column(
-                      mainAxisSize: MainAxisSize.min,
-                      children: [
-                        Semantics(
-                          label: isLiked ? 'Unlike song' : 'Like song',
-                          button: true,
-                          child: IconButton(
-                            icon: Icon(
-                              isLiked ? Icons.thumb_up : Icons.thumb_up_outlined,
-                              color: likeColor,
-                              size: 20,
-                            ),
-                            onPressed: actions.onToggleLike,
-                            padding: EdgeInsets.zero,
-                            constraints: const BoxConstraints(minWidth: 48, minHeight: 48),
-                          ),
-                        ),
-                        Text(
-                          formatCount(likeCount),
-                          style: TextStyle(
-                            color: t.textPrimary.withOpacity(0.75),
-                            fontSize: 9,
-                            fontWeight: FontWeight.w600,
-                          ),
-                        ),
-                      ],
-                    ),
-                    if (isDownloaded)
-                      Semantics(
-                        label: 'Remove download',
-                        button: true,
-                        child: IconButton(
-                          icon: const Icon(Icons.check_circle, color: Color(0xFF4CD964)),
-                          onPressed: actions.onRemoveDownload,
-                        ),
-                      )
-                    else if (isDownloading)
-                      Semantics(
-                        label: 'Cancel download',
-                        button: true,
-                        child: GestureDetector(
-                          onTap: actions.onCancelDownload,
-                          child: SizedBox(
-                            width: 36,
-                            height: 36,
-                            child: Stack(
-                              alignment: Alignment.center,
-                              children: [
-                                CircularProgressIndicator(
-                                  value: (progress > 0 && progress < 1) ? progress : null,
-                                  strokeWidth: 2.5,
-                                  color: t.textPrimary,
-                                ),
-                                if (progress > 0)
-                                  Text(
-                                    '${(progress * 100).round()}',
-                                    style: TextStyle(fontSize: 8.5, color: t.textPrimary),
-                                  ),
-                              ],
-                            ),
-                          ),
-                        ),
-                      )
-                    else
-                      Semantics(
-                        label: 'Download song',
-                        button: true,
-                        child: IconButton(
-                          icon: Icon(
-                            Icons.download_outlined,
-                            color: dlColor,
-                          ),
-                          onPressed: () async {
-                            final ok = await confirmDownload(context, song.title);
-                            if (ok) actions.onDownload();
-                          },
-                        ),
-                      ),
                   ],
                 ),
               ),
@@ -342,7 +340,6 @@ class SongRow extends StatelessWidget {
 class _DeepPlayButton extends StatelessWidget {
   final bool playing;
   final VoidCallback onTap;
-
   const _DeepPlayButton({required this.playing, required this.onTap});
 
   @override
