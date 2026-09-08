@@ -29,7 +29,7 @@ class PlayerService {
   int _windowStart = 0;
   ConcatenatingAudioSource? _concatSource;
   Map<String, String> _localPaths = {};
-  bool _extendingQueue = false;
+  Future<void> _extendChain = Future<void>.value();
   int _playlistGeneration = 0;
   int _currentIndex = 0;
   bool _shuffleMode = false;
@@ -40,6 +40,7 @@ class PlayerService {
 
   StreamSubscription<int?>? _internalIndexSubscription;
   StreamSubscription<bool>? _playingSubscription;
+  StreamSubscription<ProcessingState>? _processingSubscription;
 
   String? _playCountTrackedSongId;
   Timer? _playCountTimer;
@@ -79,6 +80,16 @@ class PlayerService {
       }
     });
     _playingSubscription = _player.playingStream.listen(_onPlayingChanged);
+    _processingSubscription =
+        _player.processingStateStream.listen((state) {
+      if (state == ProcessingState.ready && _player.playing) {
+        _playSegmentStart ??= DateTime.now();
+        _armPlayCountTimer();
+      } else if (state == ProcessingState.buffering ||
+          state == ProcessingState.loading) {
+        _pausePlayCountClock();
+      }
+    });
     _initEqualizer();
   }
 
@@ -168,11 +179,17 @@ class PlayerService {
             'No playable songs found (missing or invalid audio URLs).');
       }
 
+      final remappedStart = QueueBuilder.remapStartIndex(
+        original: songs,
+        originalStartIndex: startIndex,
+        eligible: eligibleSongs,
+      );
+
       late final BuiltQueue built;
       try {
         built = QueueBuilder.build(
           songs: eligibleSongs,
-          startIndex: startIndex,
+          startIndex: remappedStart,
           locallyAvailableSongIds: downloadedIds,
           windowSize: _maxQueueWindow,
         );
@@ -215,15 +232,24 @@ class PlayerService {
     }
   }
 
-  Future<void> _maybeExtendQueue() async {
+  Future<void> _maybeExtendQueue() {
+    _extendChain = _extendChain.catchError((_) {}).then((_) => _extendForward());
+    return _extendChain;
+  }
+
+  Future<void> _maybeExtendQueueBackward() {
+    _extendChain = _extendChain.catchError((_) {}).then((_) => _extendBackward());
+    return _extendChain;
+  }
+
+  Future<void> _extendForward() async {
     final concat = _concatSource;
     final catalog = _catalog;
-    if (_extendingQueue || concat == null || catalog.isEmpty) return;
+    if (concat == null || catalog.isEmpty) return;
     if (_playlist.length - _currentIndex > 8) return;
     final nextIndex = _windowStart + _playlist.length;
     if (nextIndex >= catalog.length) return;
 
-    _extendingQueue = true;
     try {
       final hi = catalog.length.clamp(0, nextIndex + 20);
       if (hi <= nextIndex) return;
@@ -239,18 +265,15 @@ class PlayerService {
       _playlist.addAll(slice);
     } catch (e) {
       debugPrint('PlayerService.extendQueue: $e');
-    } finally {
-      _extendingQueue = false;
     }
   }
 
-  Future<void> _maybeExtendQueueBackward() async {
+  Future<void> _extendBackward() async {
     final concat = _concatSource;
     final catalog = _catalog;
-    if (_extendingQueue || concat == null || catalog.isEmpty) return;
+    if (concat == null || catalog.isEmpty) return;
     if (_currentIndex > 2 || _windowStart <= 0) return;
 
-    _extendingQueue = true;
     try {
       final lo = (_windowStart - 20).clamp(0, _windowStart);
       if (lo >= _windowStart) return;
@@ -265,11 +288,14 @@ class PlayerService {
       if (!identical(concat, _concatSource)) return;
       _playlist.insertAll(0, slice);
       _windowStart = lo;
-      _currentIndex += slice.length;
+      final playerIdx = _player.currentIndex;
+      if (playerIdx != null && playerIdx >= 0 && playerIdx < _playlist.length) {
+        _currentIndex = playerIdx;
+      } else {
+        _currentIndex += slice.length;
+      }
     } catch (e) {
       debugPrint('PlayerService.extendQueueBack: $e');
-    } finally {
-      _extendingQueue = false;
     }
   }
 
@@ -280,14 +306,16 @@ class PlayerService {
     _playAccumulated = Duration.zero;
     _countedThisSegment = false;
     _playCountTrackedSongId = song.id;
-    if (_player.playing) {
+    if (_player.playing &&
+        _player.processingState == ProcessingState.ready) {
       _playSegmentStart = DateTime.now();
       _armPlayCountTimer();
     }
   }
 
   void _onPlayingChanged(bool playing) {
-    if (playing) {
+    final ready = _player.processingState == ProcessingState.ready;
+    if (playing && ready) {
       _playSegmentStart ??= DateTime.now();
       _armPlayCountTimer();
     } else {
@@ -315,6 +343,7 @@ class PlayerService {
     }
     _playCountTimer = Timer(left, () {
       if (!_player.playing) return;
+      if (_player.processingState != ProcessingState.ready) return;
       if (_playCountTrackedSongId != id) return;
       _firePlayCount(id);
     });
@@ -339,9 +368,6 @@ class PlayerService {
   Future<void> _initEqualizer() async {
     try {
       await EqualizerService().init();
-      final prefs = await SharedPreferences.getInstance();
-      final savedPreset = prefs.getString('eq_preset') ?? 'mewati-bass';
-      await EqualizerService().applyPreset(savedPreset);
     } catch (e) {
       debugPrint("Equalizer init (player) Error: $e");
     }
@@ -367,7 +393,7 @@ class PlayerService {
 
   Future<void> next() async {
     if (_playlist.isEmpty) return;
-    await _maybeExtendQueue();
+    unawaited(_maybeExtendQueue());
     await _player.seekToNext();
   }
 
@@ -381,12 +407,6 @@ class PlayerService {
     await _player.seekToPrevious();
   }
 
-  /// FIXED (Batch 3 audit — Drive Mode queue tap): jumps directly to
-  /// `index` within the already-loaded ConcatenatingAudioSource instead of
-  /// rebuilding/reloading the whole queue via setPlaylist(). Drive Mode's
-  /// queue list uses this so tapping a row is an instant jump instead of a
-  /// full playlist reload (re-resolving local paths, rebuilding the audio
-  /// source, isLoading flicker, playback restarting from scratch).
   Future<void> jumpToQueueIndex(int index) async {
     if (index < 0 || index >= _playlist.length) return;
     await _player.seek(Duration.zero, index: index);
@@ -418,7 +438,7 @@ class PlayerService {
     final volumeStep = _originalVolume / steps;
     int stepCount = 0;
 
-    _fadeTimer = Timer.periodic(const Duration(milliseconds: 100), (timer) {
+    _fadeTimer = Timer.periodic(const Duration(milliseconds: 200), (timer) {
       if (token != _fadeToken) {
         timer.cancel();
         return;
@@ -465,6 +485,7 @@ class PlayerService {
     _playCountTimer?.cancel();
     _internalIndexSubscription?.cancel();
     _playingSubscription?.cancel();
+    _processingSubscription?.cancel();
     _player.dispose();
   }
 }
