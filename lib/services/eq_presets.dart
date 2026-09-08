@@ -1,4 +1,3 @@
-/// Locked TM + 5-band custom. Keep in sync with SOUND_LOCK.json / web eq-presets.ts.
 class EqPreset {
   const EqPreset({
     required this.id,
@@ -55,7 +54,7 @@ class EqPresets {
       width: 1,
       truBass: 0,
       air: 8.0,
-      truTreble: 0.28,
+      truTreble: 0.22,
       advanced: true,
     ),
     EqPreset(
@@ -66,7 +65,7 @@ class EqPresets {
       width: 1,
       truBass: 0,
       air: 11.0,
-      truTreble: 0.42,
+      truTreble: 0.32,
       advanced: true,
     ),
     EqPreset(
@@ -77,7 +76,7 @@ class EqPresets {
       width: 1,
       truBass: 0,
       air: 14.0,
-      truTreble: 0.55,
+      truTreble: 0.42,
       advanced: true,
     ),
     EqPreset(id: 'vocal', label: 'Vocal ++', gains: [-2, -1, 5.5, 5, 0.5], bass: 0),
