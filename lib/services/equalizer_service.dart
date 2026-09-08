@@ -39,7 +39,11 @@ class EqualizerService {
   StreamSubscription<double>? _volSub;
   Timer? _volDebounce;
 
-  static const _bassSyncIds = {'mewati-bass', 'beats', 'wow'};
+  static const _loudIds = {'mewati-bass', 'beats'};
+  static const _bassScaleIds = {'beats'};
+
+  static double bassScaleForVolume(double vol) =>
+      (1.65 - 1.5 * vol.clamp(0.0, 1.0)).clamp(0.35, 1.50);
 
   static double loudnessBoostPct(double vol) {
     const pts = <List<double>>[
@@ -96,7 +100,9 @@ class EqualizerService {
     }
     _volSub = SystemVolume.changes.listen((v) {
       _vol = v;
-      if (!_bassSyncIds.contains(_activeId)) return;
+      if (!_loudIds.contains(_activeId) && !_bassScaleIds.contains(_activeId)) {
+        return;
+      }
       _volDebounce?.cancel();
       _volDebounce = Timer(const Duration(milliseconds: 80), () {
         unawaited(_pushNative(EqPresets.byId(_activeId)));
@@ -258,9 +264,16 @@ class EqualizerService {
       var gains = List<double>.from(
         p.advanced ? p.gains : EqPresets.upsample5to10(p.gains),
       );
-      final truBass = p.advanced ? p.truBass : 0.0;
+      var truBass = p.advanced ? p.truBass : 0.0;
       var makeup = p.advanced ? p.makeup : 0.0;
-      if (_bassSyncIds.contains(p.id)) {
+      if (_bassScaleIds.contains(p.id)) {
+        final s = bassScaleForVolume(_vol);
+        if (gains.length > 1) {
+          gains[1] = (gains[1] * s).clamp(EqPresets.minDb, EqPresets.maxDb);
+        }
+        truBass = (truBass * s).clamp(0.0, 1.0);
+      }
+      if (_loudIds.contains(p.id)) {
         makeup += loudnessMakeupDb(_vol);
       }
       await _channel.invokeMethod('apply', {
