@@ -7,6 +7,7 @@ import 'package:shared_preferences/shared_preferences.dart';
 
 import 'eq_presets.dart';
 import 'sound_policy.dart';
+import 'system_volume.dart';
 
 class EqualizerService {
   static final EqualizerService _instance = EqualizerService._internal();
@@ -32,6 +33,15 @@ class EqualizerService {
   Timer? _persistDebounce;
   List<double>? _pendingBands;
   double? _pendingBass;
+  String _activeId = defaultPresetId;
+  double _vol = 1.0;
+  StreamSubscription<double>? _volSub;
+  Timer? _volDebounce;
+
+  static const _bassSyncIds = {'mewati-bass', 'beats'};
+
+  static double bassScaleForVolume(double vol) =>
+      (1.65 - 1.5 * vol.clamp(0.0, 1.0)).clamp(0.35, 1.50);
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -50,6 +60,20 @@ class EqualizerService {
       if (kDebugMode) debugPrint('EqualizerService init dry: $e');
     }
     _isInitialized = true;
+    _volSub?.cancel();
+    try {
+      _vol = await SystemVolume.get();
+    } catch (_) {
+      _vol = 1.0;
+    }
+    _volSub = SystemVolume.changes.listen((v) {
+      _vol = v;
+      if (!_bassSyncIds.contains(_activeId)) return;
+      _volDebounce?.cancel();
+      _volDebounce = Timer(const Duration(milliseconds: 80), () {
+        unawaited(_pushNative(EqPresets.byId(_activeId)));
+      });
+    });
     try {
       final prefs = await SharedPreferences.getInstance();
       final saved = prefs.getString(presetPrefsKey) ??
@@ -68,11 +92,13 @@ class EqualizerService {
     try {
       if (!_isInitialized) await init();
       if (preset == 'custom') {
+        _activeId = 'custom';
         await _applyPersistedCustomEq();
         await _savePresetId('custom');
         return;
       }
       final p = EqPresets.byId(preset);
+      _activeId = p.id;
       await _pushNative(p);
       await _savePresetId(p.id);
     } catch (e) {
@@ -147,7 +173,7 @@ class EqualizerService {
     }
   }
 
-  Future<({List<double> bandGains, double bassBoostDb})> loadPersistedCustomEq({
+  Future<void> loadPersistedCustomEq({
     required int bandCount,
   }) async {
     try {
@@ -160,12 +186,15 @@ class EqualizerService {
             .toList();
         gains = List<double>.generate(
           bandCount,
-          (i) => i < decoded.length ? decoded[i].clamp(EqPresets.minDb, EqPresets.maxDb) : 0.0,
+          (i) => i < decoded.length
+              ? decoded[i].clamp(EqPresets.minDb, EqPresets.maxDb)
+              : 0.0,
         );
       } else {
         gains = List<double>.filled(bandCount, 0.0);
       }
-      final bass = (prefs.getDouble(_customEqBassKey) ?? 0.0).clamp(0.0, maxBassBoostDb);
+      final bass =
+          (prefs.getDouble(_customEqBassKey) ?? 0.0).clamp(0.0, maxBassBoostDb);
       return (bandGains: gains, bassBoostDb: bass);
     } catch (e) {
       if (kDebugMode) debugPrint('EqualizerService loadPersistedCustomEq: $e');
@@ -181,7 +210,8 @@ class EqualizerService {
   }
 
   Future<void> _applyPersistedCustomEq() async {
-    final saved = await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
+    final saved =
+        await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
     await _pushCustom(saved.bandGains, saved.bassBoostDb);
   }
 
@@ -194,12 +224,22 @@ class EqualizerService {
   Future<void> _pushNative(EqPreset p) async {
     if (!_dspAlive) return;
     try {
-      final gains = p.advanced ? p.gains : EqPresets.upsample5to10(p.gains);
+      var gains = List<double>.from(
+        p.advanced ? p.gains : EqPresets.upsample5to10(p.gains),
+      );
+      var truBass = p.advanced ? p.truBass : 0.0;
+      if (_bassSyncIds.contains(p.id)) {
+        final s = bassScaleForVolume(_vol);
+        if (gains.length > 1) {
+          gains[1] = (gains[1] * s).clamp(EqPresets.minDb, EqPresets.maxDb);
+        }
+        truBass = (truBass * s).clamp(0.0, 1.0);
+      }
       await _channel.invokeMethod('apply', {
         'gains': gains,
         'bass': p.bass,
         'width': p.advanced ? p.width : 1.0,
-        'truBass': p.advanced ? p.truBass : 0.0,
+        'truBass': truBass,
         'focus': p.advanced ? p.focus : 0.0,
         'definition': p.advanced ? p.definition : 0.0,
         'makeup': p.advanced ? p.makeup : 0.0,
@@ -210,7 +250,9 @@ class EqualizerService {
       });
     } catch (e) {
       _dspAlive = false;
-      if (kDebugMode) debugPrint('EqualizerService native apply failed, staying dry: $e');
+      if (kDebugMode) {
+        debugPrint('EqualizerService native apply failed, staying dry: $e');
+      }
     }
   }
 
