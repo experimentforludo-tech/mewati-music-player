@@ -38,6 +38,7 @@ class EqualizerService {
   double _vol = 1.0;
   double _intentVol = 1.0;
   bool _writingVol = false;
+  double _volStep = 1.0 / 15.0;
   StreamSubscription<double>? _volSub;
   Timer? _volDebounce;
 
@@ -50,18 +51,18 @@ class EqualizerService {
 
   static double loudnessBoostPct(double vol) {
     const pts = <List<double>>[
-      [0.00, 1.00],
-      [0.01, 1.00],
-      [0.10, 0.60],
-      [0.20, 0.60],
-      [0.30, 0.50],
-      [0.40, 0.40],
-      [0.50, 0.35],
-      [0.60, 0.30],
-      [0.70, 0.25],
-      [0.80, 0.20],
-      [0.90, 0.15],
-      [1.00, 0.10],
+      [0.00, 0.35],
+      [0.01, 0.35],
+      [0.10, 0.28],
+      [0.20, 0.28],
+      [0.30, 0.24],
+      [0.40, 0.20],
+      [0.50, 0.16],
+      [0.60, 0.13],
+      [0.70, 0.10],
+      [0.80, 0.08],
+      [0.90, 0.05],
+      [1.00, 0.03],
     ];
     final v = vol.clamp(0.0, 1.0);
     for (var i = 1; i < pts.length; i++) {
@@ -70,7 +71,7 @@ class EqualizerService {
         return pts[i - 1][1] + t * (pts[i][1] - pts[i - 1][1]);
       }
     }
-    return 0.10;
+    return 0.03;
   }
 
   static double loudnessMakeupDb(double vol) {
@@ -99,14 +100,32 @@ class EqualizerService {
     try {
       _vol = await SystemVolume.get();
       _intentVol = _vol;
+      final steps = await SystemVolume.maxSteps();
+      _volStep = 1.0 / steps;
     } catch (_) {
       _vol = 1.0;
       _intentVol = 1.0;
     }
     _volSub = SystemVolume.changes.listen((v) {
-      _vol = v;
-      if (_writingVol) return;
-      _intentVol = v;
+      if (_writingVol) {
+        _vol = v;
+        return;
+      }
+      if (_streamBoostIds.contains(_activeId)) {
+        final down = v + 0.008 < _vol;
+        final up = v > _vol + 0.008;
+        _vol = v;
+        if (up) {
+          _intentVol = (_intentVol + _volStep).clamp(0.0, 1.0);
+        } else if (down) {
+          _intentVol = (_intentVol - _volStep).clamp(0.0, 1.0);
+        } else {
+          return;
+        }
+      } else {
+        _vol = v;
+        _intentVol = v;
+      }
       if (!_loudIds.contains(_activeId) &&
           !_streamBoostIds.contains(_activeId) &&
           !_bassScaleIds.contains(_activeId)) {
