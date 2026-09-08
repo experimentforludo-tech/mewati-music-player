@@ -1,5 +1,6 @@
 class AppStrings {
-  static const String appTagline = 'Mewati music ka ghar';
+  static const String appTagline =
+      'Pre Release Version\nRelease on 21 September on\nGoogle play store';
   static const String appName = 'Mewati Music Player';
 
   static const String login = 'Login';
