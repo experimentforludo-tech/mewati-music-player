@@ -98,9 +98,6 @@ class SongRow extends StatelessWidget {
     final radius = _radius(themeId);
     final deep = themeId == AppThemeId.cyberBlack;
     final apple = themeId == AppThemeId.silverChrome;
-    final appleBorder = BorderSide(
-      color: isNow ? const Color(0x668FDB5A) : const Color(0x228FDB5A),
-    );
 
     final likeColor = isLiked
         ? (deep ? t.accent : const Color(0xFFFFD700))
@@ -113,324 +110,301 @@ class SongRow extends StatelessWidget {
     return InkWell(
       onTap: actions.onTap,
       onLongPress: actions.onLongPress,
-      borderRadius: BorderRadius.circular(radius),
       child: Container(
-        margin: const EdgeInsets.symmetric(horizontal: 3, vertical: 4),
+        margin: EdgeInsets.zero,
         decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(radius),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(apple ? 0.55 : 0.42),
-              blurRadius: apple ? 16 : 12,
-              offset: const Offset(0, 6),
+          border: Border(
+            bottom: BorderSide(
+              color: apple
+                  ? const Color(0x228FDB5A)
+                  : Colors.white.withOpacity(deep ? 0.12 : 0.14),
+              width: 1,
             ),
-            BoxShadow(
-              color: Colors.white.withOpacity(apple ? 0.10 : 0.07),
-              blurRadius: 1,
-              offset: const Offset(0, -1),
-            ),
-          ],
+          ),
         ),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(radius),
-          child: Stack(
-            children: [
-              Container(
-                padding: (apple || deep)
-                    ? const EdgeInsets.fromLTRB(0, 0, 8, 0)
-                    : const EdgeInsets.fromLTRB(14, 12, 8, 8),
-                decoration: BoxDecoration(
-                  color: apple
-                      ? null
-                      : (deep
-                          ? (isNow ? const Color(0xFF1A140F) : t.surface)
-                          : (isNow
-                              ? t.surface.withOpacity(0.45)
-                              : Colors.black.withOpacity(0.15))),
-                  gradient: apple
-                      ? LinearGradient(
-                          begin: Alignment.topCenter,
-                          end: Alignment.bottomCenter,
-                          colors: isNow
-                              ? const [Color(0xFF274433), Color(0xFF15241C)]
-                              : const [Color(0xFF1A2A22), Color(0xFF0E1612)],
-                        )
-                      : null,
-                  border: Border.fromBorderSide(
-                    apple
-                        ? appleBorder
-                        : BorderSide(
-                            color: deep
-                                ? (isNow
-                                    ? t.accent.withOpacity(0.45)
-                                    : const Color(0xFF2A2A2A))
-                                : Colors.white.withOpacity(0.18),
+        child: Stack(
+          children: [
+            Container(
+              padding: (apple || deep)
+                  ? const EdgeInsets.fromLTRB(0, 10, 8, 10)
+                  : const EdgeInsets.fromLTRB(14, 15, 8, 10),
+              decoration: BoxDecoration(
+                color: apple
+                    ? null
+                    : (deep
+                        ? (isNow ? const Color(0xFF1A140F) : Colors.transparent)
+                        : (isNow
+                            ? t.surface.withOpacity(0.45)
+                            : Colors.transparent)),
+                gradient: apple
+                    ? LinearGradient(
+                        begin: Alignment.topCenter,
+                        end: Alignment.bottomCenter,
+                        colors: isNow
+                            ? const [Color(0xFF274433), Color(0xFF0B1610)]
+                            : const [Color(0xFF122018), Color(0xFF0B1610)],
+                      )
+                    : null,
+              ),
+              child: IntrinsicHeight(
+                child: Row(
+                  crossAxisAlignment: (apple || deep)
+                      ? CrossAxisAlignment.stretch
+                      : CrossAxisAlignment.center,
+                  children: [
+                    Semantics(
+                      label: isNow && isPlaying ? 'Pause' : 'Play',
+                      button: true,
+                      child: Container(
+                        width: apple ? 86 : (deep ? 72 : 65),
+                        height: (apple || deep) ? null : 65,
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.circular(
+                              radius - 2 < 0 ? 0 : radius - 2),
+                          border: Border.all(
+                            color: apple
+                                ? const Color(0x338FDB5A)
+                                : t.textPrimary.withOpacity(0.24),
+                            width: apple ? 1 : 2,
                           ),
-                  ),
-                ),
-                child: IntrinsicHeight(
-                  child: Row(
-                    crossAxisAlignment: (apple || deep)
-                        ? CrossAxisAlignment.stretch
-                        : CrossAxisAlignment.center,
-                    children: [
-                      Semantics(
-                        label: isNow && isPlaying ? 'Pause' : 'Play',
-                        button: true,
-                        child: Container(
-                          width: apple ? 86 : (deep ? 72 : 52),
-                          height: (apple || deep) ? null : 52,
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(
-                                radius - 2 < 0 ? 0 : radius - 2),
-                            border: Border.all(
-                              color: apple
-                                  ? const Color(0x338FDB5A)
-                                  : t.textPrimary.withOpacity(0.24),
-                              width: apple ? 1 : 2,
-                            ),
-                            gradient: LinearGradient(
-                              begin: Alignment.topLeft,
-                              end: Alignment.bottomRight,
-                              colors: [t.surface, t.background],
-                            ),
+                          gradient: LinearGradient(
+                            begin: Alignment.topLeft,
+                            end: Alignment.bottomRight,
+                            colors: [t.surface, t.background],
                           ),
-                          child: (song.coverImageUrl != null &&
-                                  song.coverImageUrl!.isNotEmpty)
-                              ? ClipRRect(
-                                  borderRadius: BorderRadius.circular(
-                                      radius - 4 < 0 ? 0 : radius - 4),
-                                  child: CachedNetworkImage(
-                                    imageUrl: song.coverImageUrl!,
-                                    fit: BoxFit.cover,
-                                    cacheManager: AppCacheManager.instance,
-                                    memCacheWidth: 128,
-                                    memCacheHeight: 128,
-                                    placeholder: (context, url) => Icon(
-                                      isNow && isPlaying
-                                          ? Icons.pause
-                                          : Icons.play_arrow,
-                                      color: t.textPrimary,
-                                    ),
-                                    errorWidget: (context, url, error) => Icon(
-                                      isNow && isPlaying
-                                          ? Icons.pause
-                                          : Icons.play_arrow,
-                                      color: t.textPrimary,
-                                    ),
-                                  ),
-                                )
-                              : Icon(
-                                  isNow && isPlaying
-                                      ? Icons.pause
-                                      : Icons.play_arrow,
-                                  color: t.textPrimary,
-                                ),
                         ),
-                      ),
-                      const SizedBox(width: 12),
-                      Expanded(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            if (!deep && isNow && !apple)
-                              Padding(
-                                padding: const EdgeInsets.only(bottom: 4),
-                                child: Container(
-                                  padding: const EdgeInsets.symmetric(
-                                      horizontal: 8, vertical: 3),
-                                  decoration: BoxDecoration(
-                                    color: t.textPrimary.withOpacity(0.20),
-                                    borderRadius: BorderRadius.circular(
-                                        radius - 6 < 4 ? 4 : radius - 6),
+                        child: (song.coverImageUrl != null &&
+                                song.coverImageUrl!.isNotEmpty)
+                            ? ClipRRect(
+                                borderRadius: BorderRadius.circular(
+                                    radius - 4 < 0 ? 0 : radius - 4),
+                                child: CachedNetworkImage(
+                                  imageUrl: song.coverImageUrl!,
+                                  fit: BoxFit.cover,
+                                  cacheManager: AppCacheManager.instance,
+                                  memCacheWidth: 128,
+                                  memCacheHeight: 128,
+                                  placeholder: (context, url) => Icon(
+                                    isNow && isPlaying
+                                        ? Icons.pause
+                                        : Icons.play_arrow,
+                                    color: t.textPrimary,
                                   ),
-                                  child: Text(
-                                    isPlaying ? 'Ⅱ NOW' : '▶ NOW',
-                                    style: TextStyle(
-                                      color: t.textPrimary,
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w900,
-                                    ),
+                                  errorWidget: (context, url, error) => Icon(
+                                    isNow && isPlaying
+                                        ? Icons.pause
+                                        : Icons.play_arrow,
+                                    color: t.textPrimary,
+                                  ),
+                                ),
+                              )
+                            : Icon(
+                                isNow && isPlaying
+                                    ? Icons.pause
+                                    : Icons.play_arrow,
+                                color: t.textPrimary,
+                              ),
+                      ),
+                    ),
+                    const SizedBox(width: 12),
+                    Expanded(
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          if (!deep && isNow && !apple)
+                            Padding(
+                              padding: const EdgeInsets.only(bottom: 4),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                    horizontal: 8, vertical: 3),
+                                decoration: BoxDecoration(
+                                  color: t.textPrimary.withOpacity(0.20),
+                                  borderRadius: BorderRadius.circular(
+                                      radius - 6 < 4 ? 4 : radius - 6),
+                                ),
+                                child: Text(
+                                  isPlaying ? 'Ⅱ NOW' : '▶ NOW',
+                                  style: TextStyle(
+                                    color: t.textPrimary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w900,
                                   ),
                                 ),
                               ),
-                            Text(
-                              song.title,
-                              maxLines: 2,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: apple
-                                    ? const Color(0xFFF4FFF6)
-                                    : t.textPrimary,
-                                fontSize: apple ? 18 : 15,
-                                fontWeight: FontWeight.w900,
-                              ),
                             ),
-                            const SizedBox(height: 4),
-                            Text(
-                              _subtitleLine(subtitle, song),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                              style: TextStyle(
-                                color: t.textPrimary.withOpacity(0.70),
-                                fontSize: 12.5,
-                                fontWeight: FontWeight.w600,
-                              ),
+                          Text(
+                            song.title,
+                            maxLines: 2,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: apple
+                                  ? const Color(0xFFF4FFF6)
+                                  : t.textPrimary,
+                              fontSize: apple ? 18 : 15,
+                              fontWeight: FontWeight.w900,
                             ),
-                            Row(
-                              children: [
-                                if (deep)
-                                  _DeepPlayButton(
-                                    playing: isNow && isPlaying,
-                                    onTap: actions.onTap,
+                          ),
+                          const SizedBox(height: 4),
+                          Text(
+                            _subtitleLine(subtitle, song),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                            style: TextStyle(
+                              color: t.textPrimary.withOpacity(0.70),
+                              fontSize: 12.5,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                          Row(
+                            children: [
+                              if (deep)
+                                _DeepPlayButton(
+                                  playing: isNow && isPlaying,
+                                  onTap: actions.onTap,
+                                ),
+                              if (apple)
+                                IconButton(
+                                  tooltip:
+                                      isNow && isPlaying ? 'Pause' : 'Play',
+                                  onPressed: actions.onTap,
+                                  icon: Icon(
+                                    isNow && isPlaying
+                                        ? Icons.pause_circle_filled
+                                        : Icons.play_circle_filled,
+                                    color: t.accent,
+                                    size: 28,
                                   ),
-                                if (apple)
-                                  IconButton(
-                                    tooltip: isNow && isPlaying
-                                        ? 'Pause'
-                                        : 'Play',
-                                    onPressed: actions.onTap,
-                                    icon: Icon(
-                                      isNow && isPlaying
-                                          ? Icons.pause_circle_filled
-                                          : Icons.play_circle_filled,
-                                      color: t.accent,
-                                      size: 28,
+                                ),
+                              Semantics(
+                                label: isFav
+                                    ? 'Remove from favorites'
+                                    : 'Add to favorites',
+                                button: true,
+                                child: IconButton(
+                                  icon: Icon(
+                                    isFav
+                                        ? Icons.favorite
+                                        : Icons.favorite_border,
+                                    color: loveColor,
+                                  ),
+                                  onPressed: actions.onToggleFavorite,
+                                ),
+                              ),
+                              Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Semantics(
+                                    label: isLiked ? 'Unlike song' : 'Like song',
+                                    button: true,
+                                    child: IconButton(
+                                      icon: Icon(
+                                        isLiked
+                                            ? Icons.thumb_up
+                                            : Icons.thumb_up_outlined,
+                                        color: likeColor,
+                                        size: 20,
+                                      ),
+                                      onPressed: actions.onToggleLike,
+                                      padding: EdgeInsets.zero,
+                                      constraints: const BoxConstraints(
+                                        minWidth: 40,
+                                        minHeight: 40,
+                                      ),
                                     ),
                                   ),
+                                  Text(
+                                    formatCount(likeCount),
+                                    style: TextStyle(
+                                      color: t.textPrimary.withOpacity(0.75),
+                                      fontSize: 11,
+                                      fontWeight: FontWeight.w600,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                              if (isDownloaded)
                                 Semantics(
-                                  label: isFav
-                                      ? 'Remove from favorites'
-                                      : 'Add to favorites',
+                                  label: 'Remove download',
                                   button: true,
                                   child: IconButton(
                                     icon: Icon(
-                                      isFav
-                                          ? Icons.favorite
-                                          : Icons.favorite_border,
-                                      color: loveColor,
+                                      Icons.check_circle,
+                                      color: deep
+                                          ? t.accent
+                                          : const Color(0xFF4CD964),
                                     ),
-                                    onPressed: actions.onToggleFavorite,
+                                    onPressed: actions.onRemoveDownload,
                                   ),
-                                ),
-                                Row(
-                                  mainAxisSize: MainAxisSize.min,
-                                  children: [
-                                    Semantics(
-                                      label: isLiked
-                                          ? 'Unlike song'
-                                          : 'Like song',
-                                      button: true,
-                                      child: IconButton(
-                                        icon: Icon(
-                                          isLiked
-                                              ? Icons.thumb_up
-                                              : Icons.thumb_up_outlined,
-                                          color: likeColor,
-                                          size: 20,
-                                        ),
-                                        onPressed: actions.onToggleLike,
-                                        padding: EdgeInsets.zero,
-                                        constraints: const BoxConstraints(
-                                          minWidth: 40,
-                                          minHeight: 40,
-                                        ),
-                                      ),
-                                    ),
-                                    Text(
-                                      formatCount(likeCount),
-                                      style: TextStyle(
-                                        color: t.textPrimary.withOpacity(0.75),
-                                        fontSize: 11,
-                                        fontWeight: FontWeight.w600,
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                                if (isDownloaded)
-                                  Semantics(
-                                    label: 'Remove download',
-                                    button: true,
-                                    child: IconButton(
-                                      icon: Icon(
-                                        Icons.check_circle,
-                                        color: deep
-                                            ? t.accent
-                                            : const Color(0xFF4CD964),
-                                      ),
-                                      onPressed: actions.onRemoveDownload,
-                                    ),
-                                  )
-                                else if (isDownloading)
-                                  Semantics(
-                                    label: 'Cancel download',
-                                    button: true,
-                                    child: GestureDetector(
-                                      onTap: actions.onCancelDownload,
-                                      child: SizedBox(
-                                        width: 36,
-                                        height: 36,
-                                        child: Stack(
-                                          alignment: Alignment.center,
-                                          children: [
-                                            CircularProgressIndicator(
-                                              value: (progress > 0 &&
-                                                      progress < 1)
-                                                  ? progress
-                                                  : null,
-                                              strokeWidth: 2.5,
-                                              color: t.textPrimary,
-                                            ),
-                                            if (progress > 0)
-                                              Text(
-                                                '${(progress * 100).round()}',
-                                                style: TextStyle(
-                                                  fontSize: 8.5,
-                                                  color: t.textPrimary,
-                                                ),
+                                )
+                              else if (isDownloading)
+                                Semantics(
+                                  label: 'Cancel download',
+                                  button: true,
+                                  child: GestureDetector(
+                                    onTap: actions.onCancelDownload,
+                                    child: SizedBox(
+                                      width: 36,
+                                      height: 36,
+                                      child: Stack(
+                                        alignment: Alignment.center,
+                                        children: [
+                                          CircularProgressIndicator(
+                                            value: (progress > 0 &&
+                                                    progress < 1)
+                                                ? progress
+                                                : null,
+                                            strokeWidth: 2.5,
+                                            color: t.textPrimary,
+                                          ),
+                                          if (progress > 0)
+                                            Text(
+                                              '${(progress * 100).round()}',
+                                              style: TextStyle(
+                                                fontSize: 8.5,
+                                                color: t.textPrimary,
                                               ),
-                                          ],
-                                        ),
+                                            ),
+                                        ],
                                       ),
-                                    ),
-                                  )
-                                else
-                                  Semantics(
-                                    label: 'Download song',
-                                    button: true,
-                                    child: IconButton(
-                                      icon: Icon(
-                                        Icons.download_outlined,
-                                        color: dlColor,
-                                      ),
-                                      onPressed: () async {
-                                        final ok = await confirmDownload(
-                                            context, song.title);
-                                        if (ok) actions.onDownload();
-                                      },
                                     ),
                                   ),
-                              ],
-                            ),
-                          ],
-                        ),
+                                )
+                              else
+                                Semantics(
+                                  label: 'Download song',
+                                  button: true,
+                                  child: IconButton(
+                                    icon: Icon(
+                                      Icons.download_outlined,
+                                      color: dlColor,
+                                    ),
+                                    onPressed: () async {
+                                      final ok = await confirmDownload(
+                                          context, song.title);
+                                      if (ok) actions.onDownload();
+                                    },
+                                  ),
+                                ),
+                            ],
+                          ),
+                        ],
                       ),
-                    ],
-                  ),
+                    ),
+                  ],
                 ),
               ),
-              if (isNow)
-                Positioned(
-                  left: 0,
-                  top: 0,
-                  bottom: 0,
-                  child: Container(
-                    width: 4,
-                    color: deep ? t.accent : t.textPrimary,
-                  ),
+            ),
+            if (isNow)
+              Positioned(
+                left: 0,
+                top: 0,
+                bottom: 0,
+                child: Container(
+                  width: 4,
+                  color: deep ? t.accent : t.textPrimary,
                 ),
-            ],
-          ),
+              ),
+          ],
         ),
       ),
     );
