@@ -98,8 +98,9 @@ class SongRow extends StatelessWidget {
     final radius = _radius(themeId);
     final deep = themeId == AppThemeId.cyberBlack;
     final apple = themeId == AppThemeId.silverChrome;
-    final defaultBorder = BorderSide(
-      color: deep ? Colors.white.withOpacity(0.55) : Colors.white.withOpacity(0.18),
+    final appleFill = isNow ? const Color(0xFF1C3324) : const Color(0xFF121C16);
+    final appleBorder = BorderSide(
+      color: isNow ? const Color(0x668FDB5A) : const Color(0x228FDB5A),
     );
 
     final likeColor = isLiked
@@ -125,10 +126,20 @@ class SongRow extends StatelessWidget {
                     ? const EdgeInsets.fromLTRB(0, 0, 8, 0)
                     : const EdgeInsets.fromLTRB(14, 12, 8, 8),
                 decoration: BoxDecoration(
-                  color: isNow
-                      ? t.surface.withOpacity(0.45)
-                      : Colors.black.withOpacity(0.15),
-                  border: Border.fromBorderSide(defaultBorder),
+                  color: apple
+                      ? appleFill
+                      : (isNow
+                          ? t.surface.withOpacity(0.45)
+                          : Colors.black.withOpacity(0.15)),
+                  border: Border.fromBorderSide(
+                    apple
+                        ? appleBorder
+                        : BorderSide(
+                            color: deep
+                                ? Colors.white.withOpacity(0.55)
+                                : Colors.white.withOpacity(0.18),
+                          ),
+                  ),
                 ),
                 child: IntrinsicHeight(
                   child: Row(
@@ -144,7 +155,12 @@ class SongRow extends StatelessWidget {
                           height: apple ? null : 52,
                           decoration: BoxDecoration(
                             borderRadius: BorderRadius.circular(radius - 2 < 0 ? 0 : radius - 2),
-                            border: Border.all(color: t.textPrimary.withOpacity(0.24), width: 2),
+                            border: Border.all(
+                              color: apple
+                                  ? const Color(0x338FDB5A)
+                                  : t.textPrimary.withOpacity(0.24),
+                              width: apple ? 1 : 2,
+                            ),
                             gradient: LinearGradient(
                               begin: Alignment.topLeft,
                               end: Alignment.bottomRight,
@@ -205,7 +221,7 @@ class SongRow extends StatelessWidget {
                               maxLines: 2,
                               overflow: TextOverflow.ellipsis,
                               style: TextStyle(
-                                color: t.textPrimary,
+                                color: apple ? const Color(0xFFF4FFF6) : t.textPrimary,
                                 fontSize: apple ? 18 : 15,
                                 fontWeight: FontWeight.w900,
                               ),
