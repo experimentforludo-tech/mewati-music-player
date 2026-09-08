@@ -24,6 +24,9 @@ class MainActivity : AudioServiceActivity() {
             .setMethodCallHandler { call, result ->
                 when (call.method) {
                     "get" -> result.success(systemVolume(am))
+                    "max" -> result.success(
+                        am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1),
+                    )
                     "set" -> {
                         val v = (call.arguments as? Number)?.toDouble() ?: 0.0
                         val max = am.getStreamMaxVolume(AudioManager.STREAM_MUSIC).coerceAtLeast(1)
