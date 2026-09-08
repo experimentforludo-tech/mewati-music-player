@@ -41,8 +41,7 @@ class HomeTabs extends StatelessWidget {
         height: 66 + inset,
         padding: EdgeInsets.only(bottom: inset),
         decoration: BoxDecoration(
-          color: t.background,
-          border: const Border(top: BorderSide(color: Color(0x1AFFFFFF))),
+          color: t.surface,
         ),
         child: Row(
           children: List.generate(_labels.length, (index) {
