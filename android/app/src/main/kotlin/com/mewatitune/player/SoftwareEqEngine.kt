@@ -183,8 +183,8 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         focusBand.set(Biquad.Type.PEAK, 3200.0, focusDb, sr)
         defBand.set(Biquad.Type.HIGHSHELF, 8000.0, defDb, sr)
         val airDb = if (highGainLin <= 1.001f) 0.0 else 20.0 * log10(highGainLin.toDouble())
-        jhanPeak.set(Biquad.Type.PEAK, 6200.0, airDb * 0.75, sr)
-        jhanAir.set(Biquad.Type.PEAK, 6200.0, 0.0, sr)
+        jhanPeak.set(Biquad.Type.PEAK, 8800.0, airDb * 0.90, sr, 2.8)
+        jhanAir.set(Biquad.Type.PEAK, 8800.0, 0.0, sr, 2.8)
         val haas = haasSamples.toDouble() / sampleRate.coerceAtLeast(1)
         haasSamples = (haas * sampleRate).toInt().coerceIn(0, haasBuf.size - 1)
     }
@@ -468,12 +468,12 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             x1r = 0.0; x2r = 0.0; y1r = 0.0; y2r = 0.0
         }
 
-        fun set(type: Type, hz: Double, gainDb: Double, sr: Double) {
+        fun set(type: Type, hz: Double, gainDb: Double, sr: Double, qIn: Double? = null) {
             val a = 10.0.pow(gainDb / 40.0)
             val w0 = 2.0 * PI * hz / sr
             val cosw = cos(w0)
             val sinw = sin(w0)
-            val q = if (type == Type.PEAK) 1.4 else 0.9
+            val q = qIn ?: if (type == Type.PEAK) 1.4 else 0.9
             val alpha = sinw / (2.0 * q)
             val next: Coeffs = when (type) {
                 Type.PEAK -> {
