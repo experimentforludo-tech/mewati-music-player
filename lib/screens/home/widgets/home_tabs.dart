@@ -69,7 +69,7 @@ class HomeTabs extends StatelessWidget {
 
     final deep = t.id == AppThemeId.cyberBlack;
     final activeColor = deep ? t.accent : t.textPrimary;
-    final idleColor = t.textPrimary.withOpacity(0.63);
+    final idleColor = deep ? t.textSecondary : t.textPrimary.withOpacity(0.63);
     final underline = deep ? t.accent : t.textPrimary;
 
     return Container(
