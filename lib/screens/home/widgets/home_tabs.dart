@@ -38,7 +38,7 @@ class HomeTabs extends StatelessWidget {
       final playing = context.select<PlayerProvider, bool>((p) => p.hasSong);
       final inset = playing ? 0.0 : MediaQuery.of(context).padding.bottom;
       return Container(
-        height: 44 + inset,
+        height: 66 + inset,
         padding: EdgeInsets.only(bottom: inset),
         decoration: BoxDecoration(
           color: t.background,
@@ -56,7 +56,7 @@ class HomeTabs extends StatelessWidget {
                   onTap: () => onTabSelected(index),
                   child: Icon(
                     _icons[index],
-                    size: 26,
+                    size: 39,
                     color: on ? t.accent : t.textSecondary,
                   ),
                 ),
