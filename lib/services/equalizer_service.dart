@@ -1,3 +1,4 @@
+import 'dart:async';
 import 'dart:convert';
 
 import 'package:flutter/foundation.dart';
@@ -7,33 +8,30 @@ import 'package:shared_preferences/shared_preferences.dart';
 import 'eq_presets.dart';
 import 'sound_policy.dart';
 
-/// Drop-in replacement for the old AndroidEqualizer service.
-///
-/// NEVER create AndroidEqualizer / AndroidLoudnessEnhancer.
-/// PlayerService must use: `androidAudioEffects: const []`
-///
-/// Native PCM engine is optional (MethodChannel). If missing or it throws,
-/// playback continues dry — app does not crash.
 class EqualizerService {
   static final EqualizerService _instance = EqualizerService._internal();
   factory EqualizerService() => _instance;
   EqualizerService._internal();
 
   static const _channel = MethodChannel('mewati.sound/dsp');
-  static const _presetKey = 'mtp-eq-preset-v1';
+  static const presetPrefsKey = 'mtp-eq-preset-v1';
+  static const _legacyPresetKey = 'eq_preset';
   static const _customEqBandsKey = 'custom_eq_band_gains';
   static const _customEqBassKey = 'custom_eq_bass_boost';
+  static const defaultPresetId = 'normal';
 
   bool _isInitialized = false;
   bool _dspAlive = false;
   bool get isSupported => SoundPolicy.isSoftwareEngine;
   bool get dspAlive => _dspAlive;
 
-  /// MUST stay empty. Old code put AndroidEqualizer here — that is the
-  /// Bluetooth-silent bug.
   List<dynamic> get androidAudioEffects => const [];
 
   static const double maxBassBoostDb = EqPresets.maxBassBoostDb;
+
+  Timer? _persistDebounce;
+  List<double>? _pendingBands;
+  double? _pendingBass;
 
   Future<void> init() async {
     if (_isInitialized) return;
@@ -54,7 +52,12 @@ class EqualizerService {
     _isInitialized = true;
     try {
       final prefs = await SharedPreferences.getInstance();
-      final saved = prefs.getString(_presetKey) ?? 'normal';
+      final saved = prefs.getString(presetPrefsKey) ??
+          prefs.getString(_legacyPresetKey) ??
+          defaultPresetId;
+      if (prefs.getString(presetPrefsKey) == null) {
+        await prefs.setString(presetPrefsKey, saved);
+      }
       await applyPreset(saved);
     } catch (e) {
       if (kDebugMode) debugPrint('EqualizerService apply saved dry: $e');
@@ -88,7 +91,7 @@ class EqualizerService {
         for (final g in bandGains) g.clamp(EqPresets.minDb, EqPresets.maxDb)
       ];
       final bass = bassBoostDb.clamp(0.0, maxBassBoostDb);
-      await persistCustomEq(bandGains: gains, bassBoostDb: bass);
+      _schedulePersist(gains, bass);
       await _pushCustom(gains, bass);
     } catch (e) {
       if (kDebugMode) debugPrint('EqualizerService applyCustomSnapshot: $e');
@@ -101,7 +104,7 @@ class EqualizerService {
       final gains = List<double>.from(saved.bandGains);
       if (bandIndex < 0 || bandIndex >= gains.length) return;
       gains[bandIndex] = gainDb.clamp(EqPresets.minDb, EqPresets.maxDb);
-      await persistCustomEq(bandGains: gains, bassBoostDb: saved.bassBoostDb);
+      _schedulePersist(gains, saved.bassBoostDb);
       await _pushCustom(gains, saved.bassBoostDb);
     } catch (e) {
       if (kDebugMode) debugPrint('EqualizerService setBandGain: $e');
@@ -112,11 +115,23 @@ class EqualizerService {
     try {
       final saved = await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
       final bass = gainDb.clamp(0.0, maxBassBoostDb);
-      await persistCustomEq(bandGains: saved.bandGains, bassBoostDb: bass);
+      _schedulePersist(saved.bandGains, bass);
       await _pushCustom(saved.bandGains, bass);
     } catch (e) {
       if (kDebugMode) debugPrint('EqualizerService setBassBoost: $e');
     }
+  }
+
+  void _schedulePersist(List<double> bandGains, double bassBoostDb) {
+    _pendingBands = List<double>.from(bandGains);
+    _pendingBass = bassBoostDb;
+    _persistDebounce?.cancel();
+    _persistDebounce = Timer(const Duration(milliseconds: 280), () {
+      final g = _pendingBands;
+      final b = _pendingBass;
+      if (g == null || b == null) return;
+      unawaited(persistCustomEq(bandGains: g, bassBoostDb: b));
+    });
   }
 
   Future<void> persistCustomEq({
@@ -159,6 +174,7 @@ class EqualizerService {
   }
 
   Future<void> resetCustomEq() async {
+    _persistDebounce?.cancel();
     final zeros = List<double>.filled(EqPresets.uiBandsHz.length, 0.0);
     await persistCustomEq(bandGains: zeros, bassBoostDb: 0);
     await _pushCustom(zeros, 0);
@@ -171,7 +187,8 @@ class EqualizerService {
 
   Future<void> _savePresetId(String id) async {
     final prefs = await SharedPreferences.getInstance();
-    await prefs.setString(_presetKey, id);
+    await prefs.setString(presetPrefsKey, id);
+    await prefs.setString(_legacyPresetKey, id);
   }
 
   Future<void> _pushNative(EqPreset p) async {
@@ -188,6 +205,8 @@ class EqualizerService {
         'makeup': p.advanced ? p.makeup : 0.0,
         'compress': p.advanced && p.compress,
         'haas': p.advanced ? p.haas : 0.0,
+        'air': p.advanced ? p.air : 0.0,
+        'truTreble': p.advanced ? p.truTreble : 0.0,
       });
     } catch (e) {
       _dspAlive = false;
@@ -208,6 +227,8 @@ class EqualizerService {
         'makeup': 0.0,
         'compress': false,
         'haas': 0.0,
+        'air': 0.0,
+        'truTreble': 0.0,
       });
     } catch (e) {
       _dspAlive = false;
