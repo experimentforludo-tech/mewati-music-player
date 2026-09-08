@@ -37,6 +37,8 @@ class MiniPlayerSilverChrome extends StatelessWidget {
         child: Column(
           mainAxisSize: MainAxisSize.min,
           children: [
+            const SizedBox(height: 6),
+            _AppleTimes(),
             _AppleSeek(onSeek: (d) => playerProvider.seek(d)),
             Padding(
               padding: const EdgeInsets.fromLTRB(10, 8, 4, 8),
@@ -136,6 +138,55 @@ class MiniPlayerSilverChrome extends StatelessWidget {
       ),
     );
   }
+}
+
+class _AppleTimes extends StatelessWidget {
+  @override
+  Widget build(BuildContext context) {
+    final player = context.read<PlayerProvider>();
+    return ValueListenableBuilder<Duration>(
+      valueListenable: player.durationNotifier,
+      builder: (context, duration, _) {
+        return ValueListenableBuilder<Duration>(
+          valueListenable: player.positionNotifier,
+          builder: (context, position, __) {
+            return Padding(
+              padding: const EdgeInsets.fromLTRB(14, 0, 14, 2),
+              child: Row(
+                children: [
+                  Text(
+                    _fmt(position),
+                    style: const TextStyle(
+                      color: Color(0xCCFFFFFF),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                  const Spacer(),
+                  Text(
+                    _fmt(duration),
+                    style: const TextStyle(
+                      color: Color(0x99FFFFFF),
+                      fontSize: 11,
+                      fontWeight: FontWeight.w600,
+                      decoration: TextDecoration.none,
+                    ),
+                  ),
+                ],
+              ),
+            );
+          },
+        );
+      },
+    );
+  }
+}
+
+String _fmt(Duration d) {
+  final m = d.inMinutes;
+  final s = d.inSeconds % 60;
+  return '$m:${s.toString().padLeft(2, '0')}';
 }
 
 class _AppleSeek extends StatelessWidget {
