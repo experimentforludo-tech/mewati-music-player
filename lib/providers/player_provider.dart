@@ -1,11 +1,10 @@
-// File: lib/providers/player_provider.dart
-
 import 'dart:async';
 import 'package:flutter/foundation.dart';
 import 'package:just_audio/just_audio.dart';
 import '../core/utils/error_handler.dart';
 import '../models/song.dart';
 import '../services/player_service.dart';
+import '../services/system_volume.dart';
 
 class PlayerProvider extends ChangeNotifier {
   final PlayerService _playerService = PlayerService();
@@ -27,6 +26,7 @@ class PlayerProvider extends ChangeNotifier {
   StreamSubscription<Duration>? _positionSubscription;
   StreamSubscription<Duration?>? _durationSubscription;
   StreamSubscription<int?>? _currentIndexSubscription;
+  StreamSubscription<double>? _systemVolSubscription;
 
   Song? get currentSong => _currentSong;
   bool get isPlaying => _isPlaying;
@@ -50,7 +50,12 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   void _init() {
-    volumeNotifier.value = _playerService.volume;
+    SystemVolume.get().then((v) {
+      volumeNotifier.value = v;
+    });
+    _systemVolSubscription = SystemVolume.changes.listen((v) {
+      volumeNotifier.value = v;
+    });
     _playerStateSubscription = _playerService.playerStateStream.listen((PlayerState state) {
       _isPlaying = state.playing;
       if (state.processingState == ProcessingState.completed) {
@@ -179,8 +184,7 @@ class PlayerProvider extends ChangeNotifier {
   }
 
   Future<void> setVolume(double volume) async {
-    await _playerService.setVolume(volume);
-    volumeNotifier.value = _playerService.volume;
+    volumeNotifier.value = await SystemVolume.set(volume);
   }
 
   void clearError() {
@@ -194,10 +198,10 @@ class PlayerProvider extends ChangeNotifier {
     _positionSubscription?.cancel();
     _durationSubscription?.cancel();
     _currentIndexSubscription?.cancel();
+    _systemVolSubscription?.cancel();
     positionNotifier.dispose();
     durationNotifier.dispose();
     volumeNotifier.dispose();
     super.dispose();
   }
 }
-
