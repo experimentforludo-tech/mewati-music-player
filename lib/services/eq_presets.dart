@@ -47,7 +47,6 @@ class EqPresets {
 
   static const list = <EqPreset>[
     EqPreset(id: 'normal', label: 'Normal', gains: [0, 0, 0, 0, 0], bass: 0),
-    // APK 30 microspeaker trial — treble only. 29 bass is zero.
     EqPreset(
       id: 'mewati-bass',
       label: 'Mewati Bass™',
@@ -55,8 +54,8 @@ class EqPresets {
       bass: 0,
       width: 1,
       truBass: 0,
-      air: 4.5,
-      truTreble: 0.18,
+      air: 8.0,
+      truTreble: 0.28,
       advanced: true,
     ),
     EqPreset(
@@ -66,8 +65,8 @@ class EqPresets {
       bass: 0,
       width: 1,
       truBass: 0,
-      air: 6.0,
-      truTreble: 0.24,
+      air: 11.0,
+      truTreble: 0.42,
       advanced: true,
     ),
     EqPreset(
@@ -77,8 +76,8 @@ class EqPresets {
       bass: 0,
       width: 1,
       truBass: 0,
-      air: 7.5,
-      truTreble: 0.30,
+      air: 14.0,
+      truTreble: 0.55,
       advanced: true,
     ),
     EqPreset(id: 'vocal', label: 'Vocal ++', gains: [-2, -1, 5.5, 5, 0.5], bass: 0),
