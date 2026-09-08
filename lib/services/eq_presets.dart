@@ -12,6 +12,8 @@ class EqPreset {
     this.makeup = 0.0,
     this.compress = false,
     this.haas = 0.0,
+    this.air = 0.0,
+    this.truTreble = 0.0,
     this.advanced = false,
   });
 
@@ -26,6 +28,8 @@ class EqPreset {
   final double makeup;
   final bool compress;
   final double haas;
+  final double air;
+  final double truTreble;
   final bool advanced;
 }
 
@@ -43,31 +47,38 @@ class EqPresets {
 
   static const list = <EqPreset>[
     EqPreset(id: 'normal', label: 'Normal', gains: [0, 0, 0, 0, 0], bass: 0),
+    // APK 30 microspeaker trial — treble only. 29 bass is zero.
     EqPreset(
       id: 'mewati-bass',
       label: 'Mewati Bass™',
-      gains: [0, 5.0, 0, 0, 0, 0, 0, 0, 0, 0],
+      gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.22,
+      truBass: 0,
+      air: 4.5,
+      truTreble: 0.18,
       advanced: true,
     ),
     EqPreset(
       id: 'beats',
       label: 'Mewati Beats™',
-      gains: [0, 5.5, 0, 0, 0, 0, 0, 0, 0, 0],
+      gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.26,
+      truBass: 0,
+      air: 6.0,
+      truTreble: 0.24,
       advanced: true,
     ),
     EqPreset(
       id: 'wow',
       label: 'Mewati Boom™',
-      gains: [0, 6.5, 0, 0, 0, 0, 0, 0, 0, 0],
+      gains: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.30,
+      truBass: 0,
+      air: 7.5,
+      truTreble: 0.30,
       advanced: true,
     ),
     EqPreset(id: 'vocal', label: 'Vocal ++', gains: [-2, -1, 5.5, 5, 0.5], bass: 0),
