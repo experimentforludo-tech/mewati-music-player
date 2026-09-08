@@ -56,7 +56,7 @@ double _miniPlayerHeightFor(AppThemeId id) {
     case AppThemeId.cyberBlack:
       return 244.0;
     case AppThemeId.silverChrome:
-      return 96.0;
+      return 118.0;
     default:
       return AppDimensions.miniPlayerHeight;
   }
@@ -163,15 +163,21 @@ class _MewatiTunePlayerAppState extends State<MewatiTunePlayerApp>
                       !isSearch &&
                       !isAdvanceSettings &&
                       !isFeedback;
+
                   final miniPlayerHeight = _miniPlayerHeightFor(themeProvider.theme.id);
                   final tabLift = _miniBottomOffset(themeProvider.theme.id, routeName);
+                  final applePad = themeProvider.theme.id == AppThemeId.silverChrome
+                      ? MediaQuery.paddingOf(context).bottom
+                      : 0.0;
 
                   return Stack(
                     children: [
                       Positioned.fill(
                         child: Padding(
                           padding: EdgeInsets.only(
-                            bottom: showMiniPlayer ? miniPlayerHeight + tabLift : tabLift,
+                            bottom: showMiniPlayer
+                                ? miniPlayerHeight + tabLift + applePad
+                                : tabLift,
                           ),
                           child: child ?? const SizedBox.shrink(),
                         ),
@@ -183,7 +189,8 @@ class _MewatiTunePlayerAppState extends State<MewatiTunePlayerApp>
                           bottom: tabLift,
                           child: SafeArea(
                             top: false,
-                            bottom: tabLift == 0,
+                            bottom: tabLift == 0 &&
+                                themeProvider.theme.id != AppThemeId.silverChrome,
                             child: const MiniPlayerBar(),
                           ),
                         ),
