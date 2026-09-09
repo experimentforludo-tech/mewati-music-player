@@ -4,18 +4,28 @@ import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
+import 'package:flutter/widgets.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
 import 'eq_presets.dart';
 import 'sound_policy.dart';
 import 'system_volume.dart';
 
+/// Drop-in replacement for the old AndroidEqualizer service.
+///
+/// NEVER create AndroidEqualizer / AndroidLoudnessEnhancer.
+/// PlayerService must use: `androidAudioEffects: const []`
+///
+/// Native PCM engine is optional (MethodChannel). If missing or it throws,
+/// playback continues dry — app does not crash.
 class EqualizerService {
   static final EqualizerService _instance = EqualizerService._internal();
   factory EqualizerService() => _instance;
   EqualizerService._internal();
 
   static const _channel = MethodChannel('mewati.sound/dsp');
+  /// Single source of truth for the active preset id. ThemeProvider and
+  /// this service both read/write this key. Legacy `eq_preset` is migrated.
   static const presetPrefsKey = 'mtp-eq-preset-v1';
   static const _legacyPresetKey = 'eq_preset';
   static const _customEqBandsKey = 'custom_eq_band_gains';
@@ -41,6 +51,7 @@ class EqualizerService {
   double _volStep = 1.0 / 15.0;
   StreamSubscription<double>? _volSub;
   Timer? _volDebounce;
+  AppLifecycleListener? _life;
 
   static const _loudIds = {'mewati-bass'};
   static const _streamBoostIds = {'mewati-bass', 'beats'};
@@ -49,6 +60,7 @@ class EqualizerService {
   static double bassScaleForVolume(double vol) =>
       (1.65 - 1.5 * vol.clamp(0.0, 1.0)).clamp(0.35, 1.50);
 
+  /// Slider 1→100% boost, 10→60% … 100→10%. Net = slider × (1 + boost).
   static double loudnessBoostPctOriginal(double vol) {
     const pts = <List<double>>[
       [0.00, 1.00],
@@ -83,11 +95,6 @@ class EqualizerService {
       }
     }
     return fallback;
-  }
-
-  static double loudnessMakeupDb(double vol) {
-    final lin = 1.0 + loudnessBoostPctOriginal(vol);
-    return 20.0 * math.log(lin) / math.ln10;
   }
 
   static double loudnessMakeupDbFor(String id, double vol) {
@@ -129,6 +136,22 @@ class EqualizerService {
         return;
       }
       if (_streamBoostIds.contains(_activeId)) {
+        final pred = (_intentVol *
+                (1.0 + loudnessBoostPctFor(_activeId, _intentVol)))
+            .clamp(0.0, 1.0);
+        if ((v - pred).abs() <= _volStep * 1.6) {
+          _vol = v;
+          return;
+        }
+        if ((v - _vol).abs() > _volStep * 2.2) {
+          _writingVol = true;
+          unawaited(SystemVolume.set(pred).whenComplete(() {
+            Future<void>.delayed(const Duration(milliseconds: 200), () {
+              _writingVol = false;
+            });
+          }));
+          return;
+        }
         final down = v + 0.008 < _vol;
         final up = v > _vol + 0.008;
         _vol = v;
@@ -165,6 +188,28 @@ class EqualizerService {
     } catch (e) {
       if (kDebugMode) debugPrint('EqualizerService apply saved dry: $e');
     }
+    _life?.dispose();
+    _life = AppLifecycleListener(
+      onResume: () {
+        unawaited(_reassertEngine());
+      },
+    );
+  }
+
+  Future<void> _reassertEngine() async {
+    if (!SoundPolicy.isSoftwareEngine) return;
+    try {
+      final ok = await _channel.invokeMethod<bool>('init') ?? false;
+      _dspAlive = ok;
+    } on MissingPluginException {
+      _dspAlive = false;
+      return;
+    } catch (_) {}
+    if (_activeId == 'custom') {
+      await _applyPersistedCustomEq();
+    } else {
+      await _pushNative(EqPresets.byId(_activeId));
+    }
   }
 
   Future<void> applyPreset(String preset) async {
@@ -185,8 +230,7 @@ class EqualizerService {
     }
   }
 
-  bool shouldHintHeadphones(String id) =>
-      EqPresets.headphoneHintIds.contains(id);
+  bool shouldHintHeadphones(String id) => EqPresets.headphoneHintIds.contains(id);
 
   Future<void> applyCustomSnapshot({
     required List<double> bandGains,
@@ -206,8 +250,7 @@ class EqualizerService {
 
   Future<void> setBandGain(int bandIndex, double gainDb) async {
     try {
-      final saved =
-          await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
+      final saved = await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
       final gains = List<double>.from(saved.bandGains);
       if (bandIndex < 0 || bandIndex >= gains.length) return;
       gains[bandIndex] = gainDb.clamp(EqPresets.minDb, EqPresets.maxDb);
@@ -220,8 +263,7 @@ class EqualizerService {
 
   Future<void> setBassBoost(double gainDb) async {
     try {
-      final saved =
-          await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
+      final saved = await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
       final bass = gainDb.clamp(0.0, maxBassBoostDb);
       _schedulePersist(saved.bandGains, bass);
       await _pushCustom(saved.bandGains, bass);
@@ -268,15 +310,12 @@ class EqualizerService {
             .toList();
         gains = List<double>.generate(
           bandCount,
-          (i) => i < decoded.length
-              ? decoded[i].clamp(EqPresets.minDb, EqPresets.maxDb)
-              : 0.0,
+          (i) => i < decoded.length ? decoded[i].clamp(EqPresets.minDb, EqPresets.maxDb) : 0.0,
         );
       } else {
         gains = List<double>.filled(bandCount, 0.0);
       }
-      final bass =
-          (prefs.getDouble(_customEqBassKey) ?? 0.0).clamp(0.0, maxBassBoostDb);
+      final bass = (prefs.getDouble(_customEqBassKey) ?? 0.0).clamp(0.0, maxBassBoostDb);
       return (bandGains: gains, bassBoostDb: bass);
     } catch (e) {
       if (kDebugMode) debugPrint('EqualizerService loadPersistedCustomEq: $e');
@@ -292,8 +331,7 @@ class EqualizerService {
   }
 
   Future<void> _applyPersistedCustomEq() async {
-    final saved =
-        await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
+    final saved = await loadPersistedCustomEq(bandCount: EqPresets.uiBandsHz.length);
     await _pushCustom(saved.bandGains, saved.bassBoostDb);
   }
 
@@ -328,7 +366,7 @@ class EqualizerService {
         if ((net - _vol).abs() > 0.02) {
           _writingVol = true;
           unawaited(SystemVolume.set(net).whenComplete(() {
-            Future<void>.delayed(const Duration(milliseconds: 120), () {
+            Future<void>.delayed(const Duration(milliseconds: 200), () {
               _writingVol = false;
             });
           }));
@@ -356,9 +394,7 @@ class EqualizerService {
       });
     } catch (e) {
       _dspAlive = false;
-      if (kDebugMode) {
-        debugPrint('EqualizerService native apply failed, staying dry: $e');
-      }
+      if (kDebugMode) debugPrint('EqualizerService native apply failed, staying dry: $e');
     }
   }
 
