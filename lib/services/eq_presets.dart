@@ -64,7 +64,7 @@ class EqPresets {
       gains: [0, 5.3, 0, 0, 0, 0, 0, 0, 0, 0],
       bass: 0,
       width: 1,
-      truBass: 0.28,
+      truBass: 0.36,
       air: 0,
       truTreble: 0,
       advanced: true,
