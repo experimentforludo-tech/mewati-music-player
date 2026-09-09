@@ -13,8 +13,20 @@ import kotlin.math.sign
 import kotlin.math.sin
 import kotlin.math.tanh
 
+/**
+ * 10-band + TruBass + M/S width + Haas + focus/definition.
+ * Registered as the Media3 AudioProcessor engine (just_audio fork).
+ * Never uses AudioEffect.EQUALIZER (Bluetooth A2DP skips that).
+ *
+ * If [init]/[apply] throws, Dart keeps playback dry.
+ */
 class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, SoftwareEqAudioProcessor.Engine {
     private var channel: MethodChannel? = null
+
+    companion object {
+        @Volatile
+        var lastApplyArgs: Map<String, Any?>? = null
+    }
 
     @Volatile private var enabled = false
     @Volatile private var bypass = true
@@ -57,12 +69,10 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
         channel = MethodChannel(binding.binaryMessenger, "mewati.sound/dsp")
         channel?.setMethodCallHandler(this)
         SoftwareEqAudioProcessor.setEngine(this)
+        lastApplyArgs?.let { apply(it) }
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
-        if (SoftwareEqAudioProcessor.getEngine() === this) {
-            SoftwareEqAudioProcessor.setEngine(null)
-        }
         channel?.setMethodCallHandler(null)
         channel = null
     }
@@ -73,6 +83,7 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
                 "init" -> {
                     enabled = true
                     SoftwareEqAudioProcessor.setEngine(this)
+                    lastApplyArgs?.let { apply(it) }
                     result.success(true)
                 }
                 "apply" -> {
@@ -115,8 +126,15 @@ class SoftwareEqEngine : FlutterPlugin, MethodChannel.MethodCallHandler, Softwar
             jhanSlowR = 0f
         }
     }
+
     private fun apply(args: Map<*, *>) {
         synchronized(dspLock) {
+        val snap = HashMap<String, Any?>()
+        for ((k, v) in args) {
+            if (k is String) snap[k] = v
+        }
+        lastApplyArgs = snap
+        headroomLin = 1f
         val gains = (args["gains"] as List<*>).map { (it as Number).toDouble() }
         var allFlat = true
         for (i in freqs.indices) {
