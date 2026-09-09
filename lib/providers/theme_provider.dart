@@ -4,13 +4,12 @@ import '../core/constants/app_themes.dart';
 import '../services/equalizer_service.dart';
 
 const _themeIdKey = 'theme_id';
-const _eqPresetKey = 'eq_preset';
 const _customColorKey = 'custom_theme_color';
 const _customShadeKey = 'custom_theme_shade';
 
 class ThemeProvider extends ChangeNotifier {
   AppThemeId _themeId = AppThemes.defaultThemeId;
-  String _eqPreset = 'normal';
+  String _eqPreset = EqualizerService.defaultPresetId;
 
   // Persisted custom-theme color/shade — only meaningful when
   // _themeId == AppThemeId.custom, but kept around even when a preset
@@ -65,7 +64,8 @@ class ThemeProvider extends ChangeNotifier {
         _customShade = customShadeValue;
       }
 
-      final eq = prefs.getString(_eqPresetKey);
+      final eq = prefs.getString(EqualizerService.presetPrefsKey) ??
+          prefs.getString('eq_preset');
       if (eq != null) {
         _eqPreset = eq;
       }
@@ -106,7 +106,8 @@ class ThemeProvider extends ChangeNotifier {
 
     try {
       final prefs = await SharedPreferences.getInstance();
-      await prefs.setString(_eqPresetKey, preset);
+      await prefs.setString(EqualizerService.presetPrefsKey, preset);
+      await prefs.setString('eq_preset', preset);
     } catch (e) {
       // Ignore save error
     }
