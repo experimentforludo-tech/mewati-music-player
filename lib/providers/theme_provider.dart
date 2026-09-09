@@ -1,3 +1,6 @@
+import 'dart:async';
+import 'dart:developer' as developer;
+
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import '../core/constants/app_themes.dart';
@@ -11,17 +14,12 @@ class ThemeProvider extends ChangeNotifier {
   AppThemeId _themeId = AppThemes.defaultThemeId;
   String _eqPreset = EqualizerService.defaultPresetId;
 
-  // Persisted custom-theme color/shade — only meaningful when
-  // _themeId == AppThemeId.custom, but kept around even when a preset
-  // theme is active so the color wheel can reopen showing the last pick.
   Color _customColor = AppThemes.walkmanOrange.accent;
   double _customShade = 0.5;
 
-  // Ephemeral, NOT persisted: set while the user is dragging the color
-  // wheel / shade slider in Advance Settings so the whole app can preview
-  // it live. Cleared by [cancelThemePreview] if they leave without
-  // pressing "Set", or by [commitCustomTheme] once they do.
   AppThemeData? _previewOverride;
+  Timer? _previewDebounce;
+  AppThemeData? _queuedPreview;
 
   AppThemeId get themeId => _themeId;
   Color get customColor => _customColor;
@@ -72,18 +70,14 @@ class ThemeProvider extends ChangeNotifier {
 
       notifyListeners();
 
-      // Re-apply whatever EQ preset (including 'custom') was saved, now
-      // that playback/equalizer service is around to receive it.
       await EqualizerService().applyPreset(_eqPreset);
     } catch (e) {
-      // Ignore load errors; use defaults
+      developer.log('Theme load failed: $e', name: 'ThemeProvider');
     }
   }
 
   Future<void> setTheme(AppThemeId id) async {
     if (id == AppThemeId.custom) {
-      // Preset-only entry point — picking a custom color goes through
-      // commitCustomTheme instead, since it needs a color+shade.
       return;
     }
     if (_themeId == id && _previewOverride == null) return;
@@ -95,7 +89,7 @@ class ThemeProvider extends ChangeNotifier {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_themeIdKey, id.toString());
     } catch (e) {
-      // Ignore save error
+      developer.log('Theme save failed: $e', name: 'ThemeProvider');
     }
   }
 
@@ -109,37 +103,30 @@ class ThemeProvider extends ChangeNotifier {
       await prefs.setString(EqualizerService.presetPrefsKey, preset);
       await prefs.setString('eq_preset', preset);
     } catch (e) {
-      // Ignore save error
+      developer.log('EQ preset save failed: $e', name: 'ThemeProvider');
     }
 
     await EqualizerService().applyPreset(preset);
   }
 
-  // -----------------------------------------------------------------
-  // Custom theme: live preview (Advance Settings > Custom Theme, File 31)
-  // -----------------------------------------------------------------
-
-  /// Called continuously while the user drags the color wheel / shade
-  /// slider. Updates the WHOLE app's live theme via [theme], but does
-  /// NOT persist anything — closing the screen without pressing "Set"
-  /// must revert to whatever was saved before.
   void previewCustomTheme(Color color, double shade) {
-    _previewOverride = AppThemes.buildCustom(color, shade);
-    notifyListeners();
+    _queuedPreview = AppThemes.buildCustom(color, shade);
+    _previewDebounce?.cancel();
+    _previewDebounce = Timer(const Duration(milliseconds: 32), () {
+      _previewOverride = _queuedPreview;
+      notifyListeners();
+    });
   }
 
-  /// Called when the user leaves Advance Settings > Custom Theme without
-  /// pressing "Set" — discards the live preview and falls back to the
-  /// previously saved theme.
   void cancelThemePreview() {
+    _previewDebounce?.cancel();
     if (_previewOverride == null) return;
     _previewOverride = null;
     notifyListeners();
   }
 
-  /// Called when the user presses "Set" — persists the color+shade
-  /// permanently and switches the active theme to custom.
   Future<void> commitCustomTheme(Color color, double shade) async {
+    _previewDebounce?.cancel();
     _customColor = color;
     _customShade = shade;
     _themeId = AppThemeId.custom;
@@ -149,17 +136,22 @@ class ThemeProvider extends ChangeNotifier {
     try {
       final prefs = await SharedPreferences.getInstance();
       await prefs.setString(_themeIdKey, AppThemeId.custom.toString());
-      await prefs.setInt(_customColorKey, color.value);
+      await prefs.setInt(_customColorKey, color.toARGB32());
       await prefs.setDouble(_customShadeKey, shade);
     } catch (e) {
-      // Ignore save error
+      developer.log('Custom theme save failed: $e', name: 'ThemeProvider');
     }
   }
 
-  /// "Reset" button on the Custom Theme screen — restores the default
-  /// preset theme and clears the live preview.
   Future<void> resetToDefaultTheme() async {
+    _previewDebounce?.cancel();
     _previewOverride = null;
     await setTheme(AppThemes.defaultThemeId);
+  }
+
+  @override
+  void dispose() {
+    _previewDebounce?.cancel();
+    super.dispose();
   }
 }
